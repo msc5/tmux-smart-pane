@@ -30,7 +30,7 @@ Both the swap picker and the jump picker's pane view share the same `@last_seen`
 ### With TPM (from a published repo)
 
 ```
-set -g @plugin 'yourname/tmux-smart-pane'
+set -g @plugin 'msc5/tmux-smart-pane'
 ```
 
 Then add keybindings as above and run `<prefix> I` to install.

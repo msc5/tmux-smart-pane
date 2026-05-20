@@ -12,34 +12,33 @@ _jump_list_sessions() {
     local now
     now="$(date +%s)"
 
-    {
-        # One row per session: uses the active pane of the active window as the
-        # jump target. Avoids the ps cost since the pane picker handles that.
-        tmux list-panes -a -f "#{&&:#{window_active},#{pane_active}}" \
-            -F "#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}|#{session_attached_list}|#{pane_current_command}|#{pane_id}" |
-        while IFS=$'|' read -r s_last_attached s_created s_name s_windows s_clients p_cmd p_id; do
-            [[ "$s_name" == remote-* ]] && continue
+    # Local sessions — sorted and flushed immediately.
+    tmux list-panes -a -f "#{&&:#{window_active},#{pane_active}}" \
+        -F "#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}|#{session_attached_list}|#{pane_current_command}|#{pane_id}" |
+    while IFS=$'|' read -r s_last_attached s_created s_name s_windows s_clients p_cmd p_id; do
+        [[ "$s_name" == remote-* ]] && continue
 
-            local uptime_secs=$((now - s_created))
-            (( uptime_secs < 0 )) && uptime_secs=0
-            local uptime_disp="up $(_humanize_seconds "$uptime_secs")"
+        local uptime_secs=$((now - s_created))
+        (( uptime_secs < 0 )) && uptime_secs=0
+        local uptime_disp="up $(_humanize_seconds "$uptime_secs")"
 
-            local ref_time="${s_last_attached:-0}"
-            (( ref_time == 0 )) && ref_time="$s_created"
-            local age_secs=$((now - ref_time))
-            (( age_secs < 0 )) && age_secs=0
-            local age_disp="active $(_humanize_seconds "$age_secs") ago"
+        local ref_time="${s_last_attached:-0}"
+        (( ref_time == 0 )) && ref_time="$s_created"
+        local age_secs=$((now - ref_time))
+        (( age_secs < 0 )) && age_secs=0
+        local age_disp="active $(_humanize_seconds "$age_secs") ago"
 
-            local win_label="$s_windows window"
-            (( s_windows != 1 )) && win_label="$s_windows windows"
+        local win_label="$s_windows window"
+        (( s_windows != 1 )) && win_label="$s_windows windows"
 
-            printf "%020d|%s|%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\n" \
-                "$age_secs" "$p_id" "$s_name" "" "$win_label" "$p_cmd" \
-                "$uptime_disp" "$age_disp" "$s_clients"
-        done
+        printf "%020d|%s|%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\n" \
+            "$age_secs" "$p_id" "$s_name" "" "$win_label" "$p_cmd" \
+            "$uptime_disp" "$age_disp" "$s_clients"
+    done | sort -n -t'|' -k1,1 | cut -d'|' -f2-
 
-        _jump_list_remote_sessions "$now"
-    } | sort -n -t'|' -k1,1 | cut -d'|' -f2-
+    # Remote sessions — stream in as each SSH call completes; sorted per-host by
+    # local @last_seen. Appends below local sessions without blocking them.
+    _jump_list_remote_sessions "$now"
 }
 
 _jump_list_panes() {
@@ -122,7 +121,7 @@ _jump_list_remote_sessions() {
                 printf "%020d|remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %-26.26s  %-26.26s\n" \
                     "$sort_key" "$host" "$s_name" "$s_name" "$host" "$win_label" \
                     "$uptime_disp" "$age_disp"
-            done
+            done | sort -n -t'|' -k1,1 | cut -d'|' -f2-
         ) &
     done
     wait

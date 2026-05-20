@@ -71,8 +71,54 @@ _jump_list_panes() {
     cut -d'|' -f2-
 }
 
+_jump_list_remote_sessions() {
+    tmux has-session -t "remote" 2>/dev/null || return 0
+
+    local ssh_hosts remote_windows hosts=()
+    ssh_hosts=$(grep -E '^Host[[:space:]]+' ~/.ssh/config 2>/dev/null \
+        | grep -v -e '\*' -e 'github' | awk '{print $2}')
+    remote_windows=$(tmux list-windows -t "remote" -F "#{window_name}" 2>/dev/null)
+
+    while IFS= read -r win; do
+        echo "$ssh_hosts" | grep -qx "$win" && hosts+=("$win")
+    done <<< "$remote_windows"
+
+    [[ ${#hosts[@]} -eq 0 ]] && return 0
+
+    local now
+    now="$(date +%s)"
+
+    for host in "${hosts[@]}"; do
+        (
+            ssh -o ConnectTimeout=5 -o BatchMode=yes "$host" \
+                "tmux list-panes -a -f '#{&&:#{window_active},#{pane_active}}' \
+                 -F '#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}'" \
+                2>/dev/null |
+            while IFS='|' read -r s_last s_created s_name s_windows; do
+                local uptime_secs=$((now - s_created))
+                (( uptime_secs < 0 )) && uptime_secs=0
+                local uptime_disp="up $(_humanize_seconds "$uptime_secs")"
+
+                local ref_time="${s_last:-0}"
+                (( ref_time == 0 )) && ref_time="$s_created"
+                local age_secs=$((now - ref_time))
+                (( age_secs < 0 )) && age_secs=0
+                local age_disp="active $(_humanize_seconds "$age_secs") ago"
+
+                local win_label="$s_windows window"
+                (( s_windows != 1 )) && win_label="$s_windows windows"
+
+                printf "remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %-26.26s  %-26.26s\n" \
+                    "$host" "$s_name" "$s_name" "$host" "$win_label" \
+                    "$uptime_disp" "$age_disp"
+            done
+        ) &
+    done
+    wait
+}
+
 case "${1:-sessions}" in
     panes)    _jump_list_panes ;;
-    sessions) _jump_list_sessions ;;
-    *)        _jump_list_sessions ;;
+    sessions) _jump_list_sessions; _jump_list_remote_sessions ;;
+    *)        _jump_list_sessions; _jump_list_remote_sessions ;;
 esac

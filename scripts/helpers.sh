@@ -36,6 +36,28 @@ _tmux_fg_cmd_lines() {
         }'
 }
 
+# Find-or-create local session remote-<host> with a window for <session>,
+# then switch the tmux client into it.
+_remote_jump() {
+    local host="$1" sess="$2"
+    local local_sess="remote-$host"
+
+    if ! tmux has-session -t "$local_sess" 2>/dev/null; then
+        tmux new-session -d -s "$local_sess" -n "$sess" \
+            "ssh $host -t tmux new-session -As '$sess'"
+    elif ! tmux list-windows -t "$local_sess" -F "#{window_name}" 2>/dev/null \
+            | grep -qx "$sess"; then
+        tmux new-window -t "$local_sess:" -n "$sess" \
+            "ssh $host -t tmux new-session -As '$sess'"
+    fi
+
+    if [[ -n "${TMUX:-}" ]]; then
+        tmux switch-client -t "$local_sess:$sess"
+    else
+        tmux attach-session -t "$local_sess:$sess"
+    fi
+}
+
 # Swap src_pane (arg) with target_pane (read from stdin), saving state to cache.
 _store_swap_pane() {
     local src_pane="$1"

@@ -23,13 +23,13 @@ _tmux set-environment -u TMSP_RETURN_PICKER 2>/dev/null || true
 
 # Pass the local tmux socket to the remote session so jump-pane.sh can signal back.
 remote_cmd=$(printf \
-    'tmux set-environment -g TMUX_LOCAL_SOCKET %q 2>/dev/null; tmux set-environment -g TMUX_LOCAL_PLUGIN_DIR %q 2>/dev/null; exec tmux new-session -As %q' \
+    'clear; tmux set-environment -g TMUX_LOCAL_SOCKET %q >/dev/null 2>&1; tmux set-environment -g TMUX_LOCAL_PLUGIN_DIR %q >/dev/null 2>&1; exec tmux new-session -As %q' \
     "$remote_back_sock" "$plugin_dir" "$sess")
 
 # Clean up any stale back-channel socket on the remote (left by a prior crashed session).
 # Uses the ControlMaster if it's already open; silently no-ops otherwise.
 ssh -q -o ControlPath="$ctrl_sock" -o ControlMaster=no -o BatchMode=yes \
-    "$host" "rm -f $(printf '%q' "$remote_back_sock")" 2>/dev/null || true
+    "$host" "rm -f $(printf '%q' "$remote_back_sock")" >/dev/null 2>&1 || true
 
 ssh \
     -t \

@@ -77,18 +77,17 @@ _jump_list_panes() {
 
 _jump_list_remote_sessions() {
     local now="$1"
-    tmux has-session -t "remote" 2>/dev/null || return 0
 
-    local ssh_hosts remote_windows hosts=()
+    local ssh_hosts
     ssh_hosts=$(grep -E '^Host[[:space:]]+' ~/.ssh/config 2>/dev/null \
         | grep -v -e '\*' -e 'github' | awk '{print $2}')
-    remote_windows=$(tmux list-windows -t "remote" -F "#{window_name}" 2>/dev/null)
 
-    while IFS= read -r win; do
-        echo "$ssh_hosts" | grep -qx "$win" && hosts+=("$win")
-    done <<< "$remote_windows"
+    [[ -z "$ssh_hosts" ]] && return 0
 
-    [[ ${#hosts[@]} -eq 0 ]] && return 0
+    local hosts=()
+    while IFS= read -r h; do
+        hosts+=("$h")
+    done <<< "$ssh_hosts"
 
     for host in "${hosts[@]}"; do
         (

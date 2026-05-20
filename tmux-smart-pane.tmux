@@ -13,11 +13,11 @@ tmux set-option -g focus-events on
 tmux set-hook -g pane-focus-in \
     'run-shell "tmux set-option -p -t #{pane_id} @last_seen $(date +%s)"'
 
-SWAP_KEY=$(_get_opt "@smart-pane-swap-key"        "p")
-UNDO_KEY=$(_get_opt "@smart-pane-undo-swap-key"  "P")
-JUMP_KEY=$(_get_opt "@smart-pane-jump-key"        "s")
-LOCK_KEY=$(_get_opt "@smart-pane-lock-key"        "M-=")
-JUMP_LOCKED_KEY=$(_get_opt "@smart-pane-jump-locked-key" "M-s")
+SWAP_KEY        = $(_get_opt "@smart-pane-swap-key"        "p")
+UNDO_KEY        = $(_get_opt "@smart-pane-undo-swap-key"   "P")
+JUMP_KEY        = $(_get_opt "@smart-pane-jump-key"        "s")
+LOCK_KEY        = $(_get_opt "@smart-pane-lock-key"        "M -= ")
+JUMP_LOCKED_KEY = $(_get_opt "@smart-pane-jump-locked-key" "M-s")
 
 tmux bind "$SWAP_KEY" display-popup -w "100%" -h "100%" -b none \
     -E "$CURRENT_DIR/scripts/swap-pane.sh"

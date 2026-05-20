@@ -26,7 +26,9 @@ remote_cmd=$(printf \
     'tmux set-environment -g TMUX_LOCAL_SOCKET %q 2>/dev/null; tmux set-environment -g TMUX_LOCAL_PLUGIN_DIR %q 2>/dev/null; exec tmux new-session -As %q' \
     "$remote_back_sock" "$plugin_dir" "$sess")
 
+tput clear 2>/dev/null || true
 ssh \
+    -t \
     -o ControlMaster=auto \
     -o "ControlPath=${ctrl_sock}" \
     -o ControlPersist=60m \
@@ -34,12 +36,17 @@ ssh \
     "$host" \
     "$remote_cmd" \
 || true
+tput clear 2>/dev/null || true
 
-# Check if remote used C-b+s to return. If so, open the session picker on re-attach.
+# If remote used C-b+s to return, open the session picker immediately on re-attach.
+# Passing display-popup as a command sequence after attach-session is more reliable
+# than a client-attached hook, which fires before the client terminal is fully ready.
 if _tmux show-environment TMSP_RETURN_PICKER 2>/dev/null | grep -q '^TMSP_RETURN_PICKER=1$'; then
     _tmux set-environment -u TMSP_RETURN_PICKER 2>/dev/null || true
-    _tmux set-hook -t "$saved_session" client-attached \
-        "display-popup -w 100% -h 100% -b none -E '${plugin_dir}/scripts/jump-pane.sh' ; set-hook -u -t '${saved_session}' client-attached"
+    exec tmux -S "$local_tmux_sock" \
+        attach-session -t "$saved_session" ';' \
+        display-popup -w 100% -h 100% -b none \
+        -E "$plugin_dir/scripts/jump-pane.sh"
 fi
 
 exec tmux -S "$local_tmux_sock" attach-session -t "$saved_session"

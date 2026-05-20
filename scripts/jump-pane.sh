@@ -10,7 +10,7 @@ source "$PLUGIN_DIR/scripts/helpers.sh"
 # then exit SSH. The local connect-remote.sh wrapper handles re-attaching.
 if [[ -n "${TMUX_LOCAL_SOCKET:-}" && -S "${TMUX_LOCAL_SOCKET}" ]]; then
     TMUX="${TMUX_LOCAL_SOCKET}" tmux set-environment TMSP_RETURN_PICKER 1 2>/dev/null || true
-    tmux detach-client -E "exit 0"
+    tmux detach-client
     exit 0
 fi
 

@@ -118,8 +118,8 @@ _jump_list_remote_sessions() {
                 win_label="$s_windows window"
                 (( s_windows != 1 )) && win_label="$s_windows windows"
 
-                printf "%020d|remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %-26.26s  %-26.26s\n" \
-                    "$sort_key" "$host" "$s_name" "$s_name" "$host" "$win_label" \
+                printf "%020d|remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %30s  %-26.26s  %-26.26s\n" \
+                    "$sort_key" "$host" "$s_name" "$s_name" "$host" "$win_label" "" \
                     "$uptime_disp" "$age_disp"
             done | sort -n -t'|' -k1,1 | cut -d'|' -f2-
         ) &

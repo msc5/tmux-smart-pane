@@ -60,6 +60,12 @@ _remote_jump() {
 
     if [[ -n "${TMUX:-}" ]]; then
         tmux switch-client -t "$local_sess:$sess"
+        # Auto-lock: disable outer prefix/key-table so keys pass to the nested session.
+        # The popup runs on the current client (detected via TTY), so these target it directly.
+        tmux set-option -t "$local_sess" prefix None
+        tmux set-option -t "$local_sess" @client_locked 1
+        tmux set-option key-table off
+        tmux refresh-client -S
     else
         tmux attach-session -t "$local_sess:$sess"
     fi

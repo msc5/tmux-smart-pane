@@ -19,7 +19,7 @@ mkdir -p "$ctrl_dir"
 date +%s > "$ctrl_dir/${host}:${sess}.last"
 
 # Clear any stale return-picker signal.
-_tmux set-environment -u TMSP_RETURN_PICKER 2>/dev/null || true
+_tmux set-environment -gu TMSP_RETURN_PICKER 2>/dev/null || true
 
 # Pass the local tmux socket to the remote session so jump-pane.sh can signal back.
 remote_cmd=$(printf \
@@ -42,8 +42,8 @@ ssh \
 # If remote used C-b+s to return, open the session picker immediately on re-attach.
 # Passing display-popup as a command sequence after attach-session is more reliable
 # than a client-attached hook, which fires before the client terminal is fully ready.
-if _tmux show-environment TMSP_RETURN_PICKER 2>/dev/null | grep -q '^TMSP_RETURN_PICKER=1$'; then
-    _tmux set-environment -u TMSP_RETURN_PICKER 2>/dev/null || true
+if _tmux show-environment -g TMSP_RETURN_PICKER 2>/dev/null | grep -q '^TMSP_RETURN_PICKER=1$'; then
+    _tmux set-environment -gu TMSP_RETURN_PICKER 2>/dev/null || true
     exec tmux -S "$local_tmux_sock" \
         attach-session -t "$saved_session" ';' \
         display-popup -w 100% -h 100% -b none \

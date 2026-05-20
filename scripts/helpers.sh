@@ -2,6 +2,8 @@
 # Shared helpers — source this file, do not execute it directly.
 
 : "${SMART_PANE_CACHE:=${HOME}/.local/share/tmux-smart-pane/cache.sh}"
+: "${SMART_PANE_CTRL_DIR:=${HOME}/.local/share/tmux-smart-pane/ctrl}"
+mkdir -p "$SMART_PANE_CTRL_DIR"
 
 _humanize_seconds() {
     local t=$1 d h m s
@@ -36,39 +38,28 @@ _tmux_fg_cmd_lines() {
         }'
 }
 
-# Find-or-create local session remote-<host> with a window for <session>,
-# then switch the tmux client into it.
+# Detach from local tmux, connect to a remote tmux session via SSH, then
+# re-attach on return. The terminal is handed off directly — no local session
+# wrapper. If the remote used C-b+s to return, the session picker opens on
+# re-attach.
 _remote_jump() {
     local host="$1" sess="$2"
-    local local_sess="remote-$host"
+    local plugin_dir
+    plugin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    local local_tmux_sock="${TMUX%%,*}"
+    local saved_session
+    saved_session="$(tmux display-message -p '#S')"
 
-    if ! tmux has-session -t "$local_sess" 2>/dev/null; then
-        tmux new-session -d -s "$local_sess" -n "$sess" \
-            "ssh $host -t tmux new-session -As '$sess'"
-    elif ! tmux list-windows -t "$local_sess" -F "#{window_name}" 2>/dev/null \
-            | grep -qx "$sess"; then
-        tmux new-window -t "$local_sess:" -n "$sess" \
-            "ssh $host -t tmux new-session -As '$sess'"
-    else
-        # Window exists but inner tmux may have drifted to a different session;
-        # switch all remote clients back to the intended one.
-        ssh -o BatchMode=yes "$host" \
-            "tmux list-clients -F '#{client_name}' 2>/dev/null \
-             | while read -r c; do tmux switch-client -c \"\$c\" -t '$sess'; done" \
-            2>/dev/null || true
-    fi
+    local cmd
+    cmd=$(printf '%q ' \
+        "$plugin_dir/scripts/connect-remote.sh" \
+        "$host" "$sess" \
+        "$SMART_PANE_CTRL_DIR/${host}.sock" \
+        "$local_tmux_sock" \
+        "$saved_session" \
+        "$plugin_dir")
 
-    if [[ -n "${TMUX:-}" ]]; then
-        tmux switch-client -t "$local_sess:$sess"
-        # Auto-lock: disable outer prefix/key-table so keys pass to the nested session.
-        # The popup runs on the current client (detected via TTY), so these target it directly.
-        tmux set-option -t "$local_sess" prefix None
-        tmux set-option -t "$local_sess" @client_locked 1
-        tmux set-option key-table off
-        tmux refresh-client -S
-    else
-        tmux attach-session -t "$local_sess:$sess"
-    fi
+    tmux detach-client -E "$cmd"
 }
 
 # Swap src_pane (arg) with target_pane (read from stdin), saving state to cache.

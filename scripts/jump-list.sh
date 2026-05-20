@@ -16,7 +16,6 @@ _jump_list_sessions() {
     tmux list-panes -a -f "#{&&:#{window_active},#{pane_active}}" \
         -F "#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}|#{session_attached_list}|#{pane_current_command}|#{pane_id}" |
     while IFS=$'|' read -r s_last_attached s_created s_name s_windows s_clients p_cmd p_id; do
-        [[ "$s_name" == remote-* ]] && continue
 
         local uptime_secs=$((now - s_created))
         (( uptime_secs < 0 )) && uptime_secs=0
@@ -90,17 +89,24 @@ _jump_list_remote_sessions() {
 
     for host in "${hosts[@]}"; do
         (
-            local_sess="remote-$host"
-            ssh -o ConnectTimeout=3 -o BatchMode=yes "$host" \
+            ctrl_sock="$SMART_PANE_CTRL_DIR/${host}.sock"
+            ssh -o "ControlPath=${ctrl_sock}" \
+                -o ConnectTimeout=3 \
+                -o BatchMode=yes \
+                "$host" \
                 "tmux list-panes -a -f '#{&&:#{window_active},#{pane_active}}' \
                  -F '#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}'" \
                 2>/dev/null |
             while IFS='|' read -r s_last s_created s_name s_windows; do
-                # Sort by when we last locally focused this remote session's window.
-                local_last=$(tmux display-message -p -t "${local_sess}:${s_name}" \
-                    "#{@last_seen}" 2>/dev/null)
-                if [[ "$local_last" =~ ^[0-9]+$ && "$local_last" -gt 0 ]]; then
-                    sort_key=$((now - local_last))
+                # Sort by when we last connected to this remote session locally.
+                last_file="$SMART_PANE_CTRL_DIR/${host}:${s_name}.last"
+                if [[ -f "$last_file" ]]; then
+                    local_last=$(cat "$last_file")
+                    if [[ "$local_last" =~ ^[0-9]+$ ]]; then
+                        sort_key=$((now - local_last))
+                    else
+                        sort_key=99999999
+                    fi
                 else
                     sort_key=99999999
                 fi

@@ -29,9 +29,7 @@ remote_cmd=$(printf \
 tput clear 2>/dev/null || true
 ssh \
     -t \
-    -o ControlMaster=auto \
-    -o "ControlPath=${ctrl_sock}" \
-    -o ControlPersist=60m \
+    -o ControlPath=none \
     -R "${remote_back_sock}:${local_tmux_sock}" \
     "$host" \
     "$remote_cmd" \

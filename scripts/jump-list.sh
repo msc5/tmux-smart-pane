@@ -90,7 +90,9 @@ _jump_list_remote_sessions() {
     for host in "${hosts[@]}"; do
         (
             ctrl_sock="$SMART_PANE_CTRL_DIR/${host}.sock"
-            ssh -o "ControlPath=${ctrl_sock}" \
+            ssh -o ControlMaster=auto \
+                -o "ControlPath=${ctrl_sock}" \
+                -o ControlPersist=60m \
                 -o ConnectTimeout=3 \
                 -o BatchMode=yes \
                 "$host" \

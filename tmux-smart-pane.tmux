@@ -17,15 +17,12 @@ SWAP_KEY=$(_get_opt "@smart-pane-swap-key" "p")
 UNDO_KEY=$(_get_opt "@smart-pane-undo-swap-key" "P")
 JUMP_KEY=$(_get_opt "@smart-pane-jump-key" "s")
 LOCK_KEY=$(_get_opt "@smart-pane-lock-key" "M -= ")
-JUMP_LOCKED_KEY=$(_get_opt "@smart-pane-jump-locked-key" "M-s")
 
 tmux bind "$SWAP_KEY" display-popup -w "100%" -h "100%" -b none \
     -E "$CURRENT_DIR/scripts/swap-pane.sh"
 tmux bind "$UNDO_KEY" run-shell \
     "$CURRENT_DIR/scripts/undo-swap-pane.sh"
 tmux bind "$JUMP_KEY" display-popup -w "100%" -h "100%" -b none \
-    -E "$CURRENT_DIR/scripts/jump-pane.sh"
-tmux bind -n "$JUMP_LOCKED_KEY" display-popup -w "100%" -h "100%" -b none \
     -E "$CURRENT_DIR/scripts/jump-pane.sh"
 
 # Pass-through lock: disables outer prefix/keytable so keys flow to nested session.
@@ -44,7 +41,4 @@ bind -T off $LOCK_KEY \
     set -u status-left \; \
     set @client_locked 0 \; \
     refresh-client -S
-
-bind -T off $JUMP_LOCKED_KEY \
-    display-popup -w "100%" -h "100%" -b none -E "$CURRENT_DIR/scripts/jump-pane.sh"
 EOF

@@ -7,11 +7,7 @@ if [[ "$id" == remote:* ]]; then
     rest="${id#remote:}"
     host="${rest%%:*}"
     sess="${rest#*:}"
-    ctrl_sock="$SMART_PANE_CTRL_DIR/${host}.sock"
-    ssh -o ControlMaster=auto \
-        -o "ControlPath=${ctrl_sock}" \
-        -o ControlPersist=60m \
-        -o ConnectTimeout=2 \
+    ssh -o ConnectTimeout=2 \
         -o BatchMode=yes \
         "$host" "tmux capture-pane -ep -t '$sess' 2>/dev/null" 2>/dev/null \
         || printf "(session unavailable)\n"

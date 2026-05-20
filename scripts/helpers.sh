@@ -2,8 +2,6 @@
 # Shared helpers — source this file, do not execute it directly.
 
 : "${SMART_PANE_CACHE:=${HOME}/.local/share/tmux-smart-pane/cache.sh}"
-: "${SMART_PANE_CTRL_DIR:=${HOME}/.local/share/tmux-smart-pane/ctrl}"
-mkdir -p "$SMART_PANE_CTRL_DIR"
 
 _humanize_seconds() {
     local t=$1 d h m s
@@ -39,14 +37,11 @@ _tmux_fg_cmd_lines() {
 }
 
 # Detach from local tmux, connect to a remote tmux session via SSH, then
-# re-attach on return. The terminal is handed off directly — no local session
-# wrapper. If the remote used C-b+s to return, the session picker opens on
-# re-attach.
+# re-attach on return. The session picker opens on re-attach.
 _remote_jump() {
     local host="$1" sess="$2"
     local plugin_dir
     plugin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-    local local_tmux_sock="${TMUX%%,*}"
     local saved_session
     saved_session="$(tmux display-message -p '#S')"
 
@@ -54,8 +49,6 @@ _remote_jump() {
     cmd=$(printf '%q ' \
         "$plugin_dir/scripts/connect-remote.sh" \
         "$host" "$sess" \
-        "$SMART_PANE_CTRL_DIR/${host}.sock" \
-        "$local_tmux_sock" \
         "$saved_session" \
         "$plugin_dir")
 

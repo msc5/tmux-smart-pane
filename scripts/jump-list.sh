@@ -14,14 +14,15 @@ _jump_list_sessions() {
 
     # Local sessions — sorted and flushed immediately.
     tmux list-panes -a -f "#{&&:#{window_active},#{pane_active}}" \
-        -F "#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}|#{session_attached_list}|#{pane_current_command}|#{pane_id}" |
-    while IFS=$'|' read -r s_last_attached s_created s_name s_windows s_clients p_cmd p_id; do
+        -F "#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}|#{session_attached_list}|#{pane_current_command}|#{pane_id}|#{@last_seen}" |
+    while IFS=$'|' read -r s_last_attached s_created s_name s_windows s_clients p_cmd p_id p_last_seen; do
 
         local uptime_secs=$((now - s_created))
         (( uptime_secs < 0 )) && uptime_secs=0
         local uptime_disp="up $(_humanize_seconds "$uptime_secs")"
 
-        local ref_time="${s_last_attached:-0}"
+        local ref_time="${p_last_seen:-0}"
+        (( ref_time == 0 )) && ref_time="${s_last_attached:-0}"
         (( ref_time == 0 )) && ref_time="$s_created"
         local age_secs=$((now - ref_time))
         (( age_secs < 0 )) && age_secs=0
@@ -89,39 +90,24 @@ _jump_list_remote_sessions() {
 
     for host in "${hosts[@]}"; do
         (
-            ctrl_sock="$SMART_PANE_CTRL_DIR/${host}.sock"
-            ssh -o ControlMaster=auto \
-                -o "ControlPath=${ctrl_sock}" \
-                -o ControlPersist=60m \
-                -o ConnectTimeout=3 \
+            ssh -o ConnectTimeout=3 \
                 -o BatchMode=yes \
                 "$host" \
                 "tmux list-panes -a -f '#{&&:#{window_active},#{pane_active}}' \
-                 -F '#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}'" \
+                 -F '#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}|#{@last_seen}'" \
                 2>/dev/null |
-            while IFS='|' read -r s_last s_created s_name s_windows; do
-                # Sort by when we last connected to this remote session locally.
-                last_file="$SMART_PANE_CTRL_DIR/${host}:${s_name}.last"
-                if [[ -f "$last_file" ]]; then
-                    local_last=$(cat "$last_file")
-                    if [[ "$local_last" =~ ^[0-9]+$ ]]; then
-                        sort_key=$((now - local_last))
-                    else
-                        sort_key=99999999
-                    fi
-                else
-                    sort_key=99999999
-                fi
+            while IFS='|' read -r s_last s_created s_name s_windows p_last_seen; do
+                # Sort and display age by @last_seen; fall back to session_last_attached.
+                ref="${p_last_seen:-0}"
+                (( ref == 0 )) && ref="${s_last:-0}"
+                (( ref == 0 )) && ref="$s_created"
+                sort_key=$((now - ref))
+                (( sort_key < 0 )) && sort_key=0
+                age_disp="active $(_humanize_seconds "$sort_key") ago"
 
                 uptime_secs=$((now - s_created))
                 (( uptime_secs < 0 )) && uptime_secs=0
                 uptime_disp="up $(_humanize_seconds "$uptime_secs")"
-
-                ref_time="${s_last:-0}"
-                (( ref_time == 0 )) && ref_time="$s_created"
-                age_secs=$((now - ref_time))
-                (( age_secs < 0 )) && age_secs=0
-                age_disp="active $(_humanize_seconds "$age_secs") ago"
 
                 win_label="$s_windows window"
                 (( s_windows != 1 )) && win_label="$s_windows windows"

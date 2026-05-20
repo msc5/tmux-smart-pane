@@ -20,10 +20,45 @@ if [[ "${1:-}" == --standalone ]]; then
     FALLBACK_SESSION="${2:-}"
 fi
 
-TOGGLE_ACTION="transform:case \"\$FZF_PROMPT\" in sessions*) echo \"change-prompt(panes ❯ )+reload($JUMP_LIST panes)\";; *) echo \"change-prompt(sessions ❯ )+reload($JUMP_LIST sessions)\";; esac"
+# Allocate a free port for fzf --listen. fzf starts with local-only sessions
+# (sessions-fast) for instant display; a background job computes the full
+# globally-sorted list (including SSH) and pushes it as a reload via the API.
+# Requires fzf 0.36+ and python3. Falls back to blocking full load if unavailable.
+_fzf_port=$(python3 -c \
+    "import socket; s=socket.socket(); s.bind(('127.0.0.1',0)); p=s.getsockname()[1]; s.close(); print(p)" \
+    2>/dev/null)
+_sessions_tmp=$(mktemp)
+
+_fzf_opts=()
+if [[ -n "$_fzf_port" ]]; then
+    _fzf_opts+=(--listen "127.0.0.1:$_fzf_port")
+    _start_reload="$JUMP_LIST sessions-fast"
+    (
+        "$JUMP_LIST" sessions > "$_sessions_tmp"
+        for _i in 1 2 3 4 5; do
+            curl -s "http://127.0.0.1:$_fzf_port" \
+                -d "reload(cat $_sessions_tmp)" 2>/dev/null && break
+            sleep 0.1
+        done
+    ) &
+    _bg_pid=$!
+else
+    _start_reload="$JUMP_LIST sessions"
+fi
+
+_cleanup() {
+    [[ -n "${_bg_pid:-}" ]] && kill "$_bg_pid" 2>/dev/null || true
+    rm -f "$_sessions_tmp"
+}
+trap _cleanup EXIT
+
+# When toggling back to sessions, serve the cached temp file (already sorted)
+# rather than re-running SSH.
+TOGGLE_ACTION="transform:case \"\$FZF_PROMPT\" in sessions*) echo \"change-prompt(panes ❯ )+reload($JUMP_LIST panes)\";; *) echo \"change-prompt(sessions ❯ )+reload(cat $_sessions_tmp 2>/dev/null || $JUMP_LIST sessions)\";; esac"
 
 selected=$(
-    fzf --delimiter='|' \
+    fzf "${_fzf_opts[@]}" \
+        --delimiter='|' \
         --with-nth=2.. \
         --layout=reverse \
         --highlight-line \
@@ -31,7 +66,7 @@ selected=$(
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \
         --preview "$PREVIEW {1}" \
-        --bind "start:reload($JUMP_LIST sessions)" \
+        --bind "start:reload($_start_reload)" \
         --bind "ctrl-l:$TOGGLE_ACTION" \
         < /dev/null
 )

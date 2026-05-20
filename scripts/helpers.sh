@@ -49,6 +49,13 @@ _remote_jump() {
             | grep -qx "$sess"; then
         tmux new-window -t "$local_sess:" -n "$sess" \
             "ssh $host -t tmux new-session -As '$sess'"
+    else
+        # Window exists but inner tmux may have drifted to a different session;
+        # switch all remote clients back to the intended one.
+        ssh -o BatchMode=yes "$host" \
+            "tmux list-clients -F '#{client_name}' 2>/dev/null \
+             | while read -r c; do tmux switch-client -c \"\$c\" -t '$sess'; done" \
+            2>/dev/null || true
     fi
 
     if [[ -n "${TMUX:-}" ]]; then

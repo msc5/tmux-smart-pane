@@ -7,6 +7,7 @@ set -e
 fzf --delimiter='|' \
     --with-nth=2.. \
     --layout=reverse \
+    --highlight-line \
     --prompt 'panes> ' \
     --preview-window bottom \
     --preview-label ' Pane ' \

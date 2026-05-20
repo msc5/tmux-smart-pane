@@ -10,6 +10,7 @@ selected=$(
     fzf --delimiter='|' \
         --with-nth=2.. \
         --layout=reverse \
+        --highlight-line \
         --header 'ctrl-l: toggle sessions / panes' \
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \

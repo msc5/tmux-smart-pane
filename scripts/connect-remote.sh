@@ -26,7 +26,11 @@ remote_cmd=$(printf \
     'tmux set-environment -g TMUX_LOCAL_SOCKET %q 2>/dev/null; tmux set-environment -g TMUX_LOCAL_PLUGIN_DIR %q 2>/dev/null; exec tmux new-session -As %q' \
     "$remote_back_sock" "$plugin_dir" "$sess")
 
-tput clear 2>/dev/null || true
+# Clean up any stale back-channel socket on the remote (left by a prior crashed session).
+# Uses the ControlMaster if it's already open; silently no-ops otherwise.
+ssh -q -o ControlPath="$ctrl_sock" -o ControlMaster=no -o BatchMode=yes \
+    "$host" "rm -f $(printf '%q' "$remote_back_sock")" 2>/dev/null || true
+
 ssh \
     -t \
     -o ControlPath=none \
@@ -34,7 +38,6 @@ ssh \
     "$host" \
     "$remote_cmd" \
 || true
-tput clear 2>/dev/null || true
 
 # If remote used C-b+s to return, open the session picker immediately on re-attach.
 # Passing display-popup as a command sequence after attach-session is more reliable

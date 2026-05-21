@@ -47,42 +47,13 @@ _jump_list_sessions() {
     sort -n -t'|' -k1,1
 }
 
-_jump_list_panes() {
-    local this_pane_id now
-    this_pane_id="$(tmux display-message -p "#{pane_id}")"
-    now="$(date +%s)"
-
-    local fg_cmd_file
-    fg_cmd_file="$(mktemp)"
-    trap 'rm -f "$fg_cmd_file"' EXIT
-    _tmux_fg_cmd_lines > "$fg_cmd_file"
-
-    tmux list-panes -a -F "#{session_name}|#{window_index}|#{pane_index}|#{pane_current_command}|#{pane_tty}|#{pane_id}|#{@last_seen}" |
-    while IFS=$'|' read -r s_name w_index p_index p_cmd p_tty p_id last_seen; do
-        [[ "$p_id" == "$this_pane_id" ]] && continue
-
-        tty_short="${p_tty##*/}"
-        p_proc=$(awk -F'\t' -v tty="$tty_short" '$1 == tty { print $2; exit }' "$fg_cmd_file")
-        p_proc="${p_proc:-$p_cmd}"
-
-        raw_age=99999999
-        age="never"
-        if [[ -n "${last_seen:-}" ]]; then
-            raw_age=$((now - last_seen))
-            (( raw_age < 0 )) && raw_age=0
-            age="$(_humanize_seconds "$raw_age") ago"
-        fi
-
-        printf "%08d|%s|%-15.15s  %3d:%-3d  %-20s  %.55s\n" \
-            "$last_seen" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
-    done |
-    sort -n -t'|' -k1,1
-}
-
 _jump_list_remote_sessions() {
 
-    # Return cache if one exists
-    (( $1 )) && [[ -s "/tmp/jump-cache-remote-sessions.txt" ]] && cat "/tmp/jump-cache-remote-sessions.txt" && return
+    # Return cache if one exists, otherwise exit immediately
+    if (( $1 )); then
+        [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] && cat $REMOTE_SESSIONS_CACHE_PATH 
+        return
+    fi
 
     now="$(date +%s)"
 
@@ -125,15 +96,48 @@ _jump_list_remote_sessions() {
                 printf "%020d|remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %30s  %-26.26s  %-26.26s\n" \
                     "$sort_key" "$host" "$s_name" "$s_name" "$host" "$win_label" "" \
                     "$uptime_disp" "$age_disp"
-            done | sort -n -t'|' -k1,1 | tee /tmp/jump-cache-remote-sessions.txt
+            done | sort -n -t'|' -k1,1 | tee $REMOTE_SESSIONS_CACHE_PATH
         ) &
     done
     wait
 }
 
+_jump_list_panes() {
+    local this_pane_id now
+    this_pane_id="$(tmux display-message -p "#{pane_id}")"
+    now="$(date +%s)"
+
+    local fg_cmd_file
+    fg_cmd_file="$(mktemp)"
+    trap 'rm -f "$fg_cmd_file"' EXIT
+    _tmux_fg_cmd_lines > "$fg_cmd_file"
+
+    tmux list-panes -a -F "#{session_name}|#{window_index}|#{pane_index}|#{pane_current_command}|#{pane_tty}|#{pane_id}|#{@last_seen}" |
+    while IFS=$'|' read -r s_name w_index p_index p_cmd p_tty p_id last_seen; do
+        [[ "$p_id" == "$this_pane_id" ]] && continue
+
+        tty_short="${p_tty##*/}"
+        p_proc=$(awk -F'\t' -v tty="$tty_short" '$1 == tty { print $2; exit }' "$fg_cmd_file")
+        p_proc="${p_proc:-$p_cmd}"
+
+        raw_age=99999999
+        age="never"
+        if [[ -n "${last_seen:-}" ]]; then
+            raw_age=$((now - last_seen))
+            (( raw_age < 0 )) && raw_age=0
+            age="$(_humanize_seconds "$raw_age") ago"
+        fi
+
+        printf "%08d|%s|%-15.15s  %3d:%-3d  %-20s  %.55s\n" \
+            "$last_seen" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
+    done |
+    sort -n -t'|' -k1,1
+}
+
+
 case "${1:-sessions}" in
-    panes)    _jump_list_panes ;;
-    sessions) _jump_list_sessions ;;
     all)      _jump_list_all "$2" ;;
+    sessions) _jump_list_sessions ;;
+    panes)    _jump_list_panes ;;
     *)        _jump_list_sessions ;;
 esac

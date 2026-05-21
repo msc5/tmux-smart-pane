@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$PLUGIN_DIR/scripts/helpers.sh"
+
 # Manages a remote tmux session connection. Invoked via `tmux detach-client -E`.
 # Args: host sess saved-session plugin-dir
 host="$1"
@@ -15,6 +18,6 @@ remote_cmd=$(printf \
 ssh -t "$host" "$remote_cmd" || true
 
 # When detached, update cache. The most recent remote session should be replaced with 0 (time since visited in sec)
-sed -E -i '' "/remote:$host:$sess/ s/[0-9]{20}/$(date +%s)/g" /tmp/jump-cache-remote-sessions.txt
+sed -E -i '' "/remote:$host:$sess/ s/[0-9]{20}/$(date +%s)/g" $REMOTE_SESSIONS_CACHE_PATH
 
 exec "$plugin_dir/scripts/jump-pane.sh" --standalone "$saved_session"

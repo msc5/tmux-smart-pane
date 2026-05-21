@@ -8,6 +8,15 @@
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$PLUGIN_DIR/scripts/helpers.sh"
 
+_jump_list_all() {
+    (
+        _jump_list_sessions
+        _jump_list_remote_sessions $1
+    ) |
+    sort -r -n -t'|' -k1,1 |
+    cut -d'|' -f2-
+}
+
 _jump_list_sessions() {
     local now
     now="$(date +%s)"
@@ -32,13 +41,10 @@ _jump_list_sessions() {
         (( s_windows != 1 )) && win_label="$s_windows windows"
 
         printf "%020d|%s|%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\n" \
-            "$age_secs" "$p_id" "$s_name" "" "$win_label" "$p_cmd" \
+            "$ref_time" "$p_id" "$s_name" "" "$win_label" "$p_cmd" \
             "$uptime_disp" "$age_disp" "$s_clients"
-    done | sort -n -t'|' -k1,1 | cut -d'|' -f2-
-
-    # Remote sessions — stream in as each SSH call completes; sorted per-host by
-    # local @last_seen. Appends below local sessions without blocking them.
-    _jump_list_remote_sessions "$now"
+    done | 
+    sort -n -t'|' -k1,1
 }
 
 _jump_list_panes() {
@@ -68,14 +74,17 @@ _jump_list_panes() {
         fi
 
         printf "%08d|%s|%-15.15s  %3d:%-3d  %-20s  %.55s\n" \
-            "$raw_age" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
+            "$last_seen" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
     done |
-    sort -n -t'|' -k1,1 |
-    cut -d'|' -f2-
+    sort -n -t'|' -k1,1
 }
 
 _jump_list_remote_sessions() {
-    local now="$1"
+
+    # Return cache if one exists
+    (( $1 )) && [[ -s "/tmp/jump-cache-remote-sessions.txt" ]] && cat "/tmp/jump-cache-remote-sessions.txt" && return
+
+    now="$(date +%s)"
 
     local ssh_hosts
     ssh_hosts=$(grep -E '^Host[[:space:]]+' ~/.ssh/config 2>/dev/null \
@@ -101,9 +110,10 @@ _jump_list_remote_sessions() {
                 ref="${p_last_seen:-0}"
                 (( ref == 0 )) && ref="${s_last:-0}"
                 (( ref == 0 )) && ref="$s_created"
-                sort_key=$((now - ref))
+                sort_key=$ref
+                age_secs=$((now - ref))
                 (( sort_key < 0 )) && sort_key=0
-                age_disp="active $(_humanize_seconds "$sort_key") ago"
+                age_disp="active $(_humanize_seconds "$age_secs") ago"
 
                 uptime_secs=$((now - s_created))
                 (( uptime_secs < 0 )) && uptime_secs=0
@@ -115,7 +125,7 @@ _jump_list_remote_sessions() {
                 printf "%020d|remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %30s  %-26.26s  %-26.26s\n" \
                     "$sort_key" "$host" "$s_name" "$s_name" "$host" "$win_label" "" \
                     "$uptime_disp" "$age_disp"
-            done | sort -n -t'|' -k1,1 | cut -d'|' -f2-
+            done | sort -n -t'|' -k1,1 | tee /tmp/jump-cache-remote-sessions.txt
         ) &
     done
     wait
@@ -124,5 +134,6 @@ _jump_list_remote_sessions() {
 case "${1:-sessions}" in
     panes)    _jump_list_panes ;;
     sessions) _jump_list_sessions ;;
+    all)      _jump_list_all "$2" ;;
     *)        _jump_list_sessions ;;
 esac

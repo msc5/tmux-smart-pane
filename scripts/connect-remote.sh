@@ -14,4 +14,7 @@ remote_cmd=$(printf \
 
 ssh -t "$host" "$remote_cmd" || true
 
+# When detached, update cache. The most recent remote session should be replaced with 0 (time since visited in sec)
+sed -E -i '' "/remote:$host:$sess/ s/[0-9]{20}/$(date +%s)/g" /tmp/jump-cache-remote-sessions.txt
+
 exec "$plugin_dir/scripts/jump-pane.sh" --standalone "$saved_session"

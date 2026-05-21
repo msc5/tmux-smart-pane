@@ -18,26 +18,27 @@ FALLBACK_SESSION=""
 if [[ "${1:-}" == --standalone ]]; then
     STANDALONE=1
     FALLBACK_SESSION="${2:-}"
-fi
 
-TOGGLE_ACTION="transform:case \"\$FZF_PROMPT\" in sessions*) echo \"change-prompt(panes ❯ )+reload($JUMP_LIST panes)\";; *) echo \"change-prompt(sessions ❯ )+reload($JUMP_LIST sessions)\";; esac"
+fi
 
 selected=$(
     fzf --delimiter='|' \
         --with-nth=2.. \
         --layout=reverse \
         --highlight-line \
-        --header 'ctrl-l: toggle sessions / panes' \
+        --header 'ctrl-l: show panes' \
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \
         --preview "$PREVIEW {1}" \
-        --bind "start:reload($JUMP_LIST sessions)" \
-        --bind "ctrl-l:$TOGGLE_ACTION" \
-        < /dev/null
+        --bind "load:reload-sync($JUMP_LIST all)" \
+        --bind "ctrl-l:change-prompt(panes ❯ )+change-header(ctrl-h: show sessions)+reload($JUMP_LIST panes)" \
+        --bind "ctrl-h:change-prompt(sessions ❯ )+change-header(ctrl-l: show panes)+reload($JUMP_LIST all)" \
+        < <("$JUMP_LIST" all 1)
 )
 
 p_id="${selected%%|*}"
 
+# None selected from fzf
 if [[ -z "$p_id" ]]; then
     (( STANDALONE )) && exec tmux attach-session -t "$FALLBACK_SESSION"
     exit 0

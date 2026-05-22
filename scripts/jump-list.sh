@@ -114,6 +114,8 @@ _jump_list_panes() {
 
     tmux list-panes -a -F "#{session_name}|#{window_index}|#{pane_index}|#{pane_current_command}|#{pane_tty}|#{pane_id}|#{@last_seen}" |
     while IFS=$'|' read -r s_name w_index p_index p_cmd p_tty p_id last_seen; do
+
+        # Skip active pane
         [[ "$p_id" == "$this_pane_id" ]] && continue
 
         tty_short="${p_tty##*/}"
@@ -131,7 +133,8 @@ _jump_list_panes() {
         printf "%010d|%s|%-15.15s  %3d:%-3d  %-20s  %.55s\n" \
             "$last_seen" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
     done |
-    sort -r -n -t'|' -k1,1
+    sort -r -n -t'|' -k1,1 | 
+    cut -d'|' -f2-
 }
 
 

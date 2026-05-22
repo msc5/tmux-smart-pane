@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generates row listings consumed by jump-pane.sh and swap-pane.sh.
+# Generates row listings consumed by jump-session.sh and jump-pane.sh
 # Each row: <sort_key>|<pane_id>|<display>
 #
 # Usage:
@@ -116,7 +116,7 @@ _jump_list_panes() {
     while IFS=$'|' read -r s_name w_index p_index p_cmd p_tty p_id last_seen; do
 
         # Skip active pane
-        [[ "$p_id" == "$this_pane_id" ]] && continue
+        (( $1 )) && [[ "$p_id" == "$this_pane_id" ]] && continue
 
         tty_short="${p_tty##*/}"
         p_proc=$(awk -F'\t' -v tty="$tty_short" '$1 == tty { print $2; exit }' "$fg_cmd_file")
@@ -130,8 +130,10 @@ _jump_list_panes() {
             age="$(_humanize_seconds "$raw_age") ago"
         fi
 
+        sort_key="${last_seen:-0}"
+
         printf "%010d|%s|%-15.15s  %3d:%-3d  %-20s  %.55s\n" \
-            "$last_seen" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
+            "$sort_key" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
     done |
     sort -r -n -t'|' -k1,1 | 
     cut -d'|' -f2-
@@ -142,6 +144,6 @@ case "${1:-sessions}" in
     all)                _jump_list_all "$2" ;;
     sessions)           _jump_list_sessions ;;
     remote_sessions)    _jump_list_remote_sessions "$2" ;;
-    panes)              _jump_list_panes ;;
+    panes)              _jump_list_panes "$2" ;;
     *)                  _jump_list_sessions ;;
 esac

@@ -57,10 +57,9 @@ _remote_jump() {
 }
 
 # Swap src_pane (arg) with target_pane (read from stdin), saving state to cache.
-_store_swap_pane() {
+_swap_pane() {
     local src_pane="$1"
-    local target_pane
-    read -r target_pane
+    local target_pane="$2"
 
     [[ -z "$target_pane" ]] && return 0
 

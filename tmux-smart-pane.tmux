@@ -27,18 +27,16 @@ tmux bind "$JUMP_KEY" display-popup -w "100%" -h "100%" -b none \
 
 # Pass-through lock: disables outer prefix/keytable so keys flow to nested session.
 # Toggle with LOCK_KEY (default M-=); a second press restores normal behaviour.
-tmux source-file - <<EOF
-bind -T root $LOCK_KEY \
-    set prefix None \; \
-    set key-table off \; \
-    set @client_locked 1 \; \
-    if -F '#{pane_in_mode}' 'send-keys -X cancel' \; \
+tmux bind -T root $LOCK_KEY \
+    set prefix None \
+    set key-table off \
+    set @client_locked 1 \
+    if -F '#{pane_in_mode}' 'send-keys -X cancel' \
     refresh-client -S
 
-bind -T off $LOCK_KEY \
-    set -u prefix \; \
-    set -u key-table \; \
-    set -u status-left \; \
-    set @client_locked 0 \; \
+tmux bind -T off $LOCK_KEY \
+    set -u prefix \
+    set -u key-table \
+    set -u status-left \
+    set @client_locked 0 \
     refresh-client -S
-EOF

@@ -11,5 +11,6 @@ unset _cache_opt
 this_pane_id="$(tmux display-message -p "#{pane_id}")"
 
 "$PLUGIN_DIR/scripts/jump-list.sh" panes |
-"$PLUGIN_DIR/scripts/pick-pane.sh" |
+cut -d'|' -f2- |
+"$PLUGIN_DIR/scripts/pick-pane.sh" | 
 _store_swap_pane "$this_pane_id"

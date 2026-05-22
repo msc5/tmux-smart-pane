@@ -26,9 +26,9 @@ selected=$(
         --with-nth=2.. \
         --layout=reverse \
         --highlight-line \
-        --header 'ctrl-l: show panes' \
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \
+        --header 'ctrl-l: show panes' \
         --preview "$PREVIEW {1}" \
         --bind "load:reload-sync($JUMP_LIST all)" \
         --bind "ctrl-l:change-prompt(panes ❯ )+change-header(ctrl-h: show sessions)+reload($JUMP_LIST panes)" \

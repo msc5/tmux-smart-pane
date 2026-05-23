@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Invoked via tmux display-popup (normal) or directly from connect-remote.sh
 # (--standalone mode, where fzf runs in the bare terminal before re-attaching).
-PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 JUMP_LIST="$PLUGIN_DIR/scripts/jump-list.sh"
 PREVIEW="$PLUGIN_DIR/scripts/preview.sh"
-source "$PLUGIN_DIR/scripts/helpers.sh"
 
 # In a managed SSH session: detach to trigger return to local tmux + picker.
 if [[ -n "${TMSP_MANAGED:-}" ]]; then
@@ -46,9 +45,14 @@ if [[ "$p_id" == remote:* ]]; then
     rest="${p_id#remote:}"
     if (( STANDALONE )); then
         exec "$PLUGIN_DIR/scripts/connect-remote.sh" \
-            "${rest%%:*}" "${rest#*:}" "$FALLBACK_SESSION" "$PLUGIN_DIR"
+            "${rest%%:*}" "${rest#*:}" "$FALLBACK_SESSION"
     else
-        _remote_jump "${rest%%:*}" "${rest#*:}"
+        saved_session="$(tmux display-message -p '#S')"
+        cmd=$(printf '%q ' \
+            "$PLUGIN_DIR/scripts/connect-remote.sh" \
+            "${rest%%:*}" "${rest#*:}" \
+            "$saved_session")
+        tmux detach-client -E "$cmd"
     fi
 else
     if (( STANDALONE )); then

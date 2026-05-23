@@ -5,8 +5,7 @@
 # Usage:
 #   jump-list.sh sessions   — one row per session (default)
 #   jump-list.sh panes      — one row per pane, sorted by @last_seen recency
-PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-source "$PLUGIN_DIR/scripts/helpers.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
 _jump_list_all() {
     (

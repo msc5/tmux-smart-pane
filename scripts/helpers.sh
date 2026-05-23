@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # Shared helpers — source this file, do not execute it directly.
 
+PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
 : "${SMART_PANE_BASE_PATH:=${HOME}/.local/share/tmux-smart-pane/}"
 : "${SMART_PANE_CACHE:=${SMART_PANE_BASE_PATH}/swap-cache.sh}"
 : "${REMOTE_SESSIONS_CACHE_PATH:=${SMART_PANE_BASE_PATH}/jump-cache-remote-sessions.txt}"
+
+# Allow tmux.conf to override the cache path.
+_cache_opt=$(tmux show-option -gqv "@smart-pane-cache-path" 2>/dev/null)
+[[ -n "$_cache_opt" ]] && SMART_PANE_CACHE="$_cache_opt"
+unset _cache_opt
 
 _humanize_seconds() {
     local t=$1 d h m s
@@ -38,37 +45,11 @@ _tmux_fg_cmd_lines() {
         }'
 }
 
-# Detach from local tmux, connect to a remote tmux session via SSH, then
-# re-attach on return. The session picker opens on re-attach.
-_remote_jump() {
-    local host="$1" sess="$2"
-    local plugin_dir
-    plugin_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-    local saved_session
-    saved_session="$(tmux display-message -p '#S')"
-
-    local cmd
-    cmd=$(printf '%q ' \
-        "$plugin_dir/scripts/connect-remote.sh" \
-        "$host" "$sess" \
-        "$saved_session" \
-        "$plugin_dir")
-
-    tmux detach-client -E "$cmd"
-}
-
-# Swap src_pane (arg) with target_pane (read from stdin), saving state to cache.
-_swap_pane() {
-    local src_pane="$1"
-    local target_pane="$2"
-
-    [[ -z "$target_pane" ]] && return 0
-
-    mkdir -p "$(dirname "$SMART_PANE_CACHE")"
-    declare -A CACHE
-    [[ -f "$SMART_PANE_CACHE" ]] && source -- "$SMART_PANE_CACHE"
-    CACHE[swap-pane]="${src_pane}:${target_pane}"
-    declare -p CACHE > "$SMART_PANE_CACHE"
-
-    tmux swap-pane -s "$src_pane" -t "$target_pane"
+# Portable in-place sed: GNU sed uses -i, BSD sed requires -i ''.
+_sed_inplace() {
+    if sed --version 2>/dev/null | grep -q GNU; then
+        sed -i "$@"
+    else
+        sed -i '' "$@"
+    fi
 }

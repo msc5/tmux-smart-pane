@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-# Invoked via tmux display-popup (normal) or directly from connect-remote.sh
-# (--standalone mode, where fzf runs in the bare terminal before re-attaching).
-PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# Invoked via tmux display-popup.
+source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 JUMP_LIST="$PLUGIN_DIR/scripts/jump-list.sh"
 PREVIEW="$PLUGIN_DIR/scripts/preview.sh"
-source "$PLUGIN_DIR/scripts/helpers.sh"
 
 selected=$(
     fzf --delimiter='|' \
@@ -32,7 +30,7 @@ fi
 
 if [[ "$action" = swap ]]; then
     this_pane_id="$(tmux display-message -p "#{pane_id}")"
-    _swap_pane "$this_pane_id" "$p_id"
+    "$PLUGIN_DIR/scripts/swap-pane.sh" "$this_pane_id" "$p_id"
 else
     if (( STANDALONE )); then
         target_sess=$(tmux list-panes -a \

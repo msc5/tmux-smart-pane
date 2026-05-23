@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Generates row listings consumed by jump-pane.sh and swap-pane.sh.
+# Generates row listings consumed by jump-session.sh and jump-pane.sh
 # Each row: <sort_key>|<pane_id>|<display>
 #
 # Usage:
@@ -40,11 +40,11 @@ _jump_list_sessions() {
         local win_label="$s_windows window"
         (( s_windows != 1 )) && win_label="$s_windows windows"
 
-        printf "%020d|%s|%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\n" \
+        printf "%010d|%s|%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\n" \
             "$ref_time" "$p_id" "$s_name" "" "$win_label" "$p_cmd" \
             "$uptime_disp" "$age_disp" "$s_clients"
     done | 
-    sort -n -t'|' -k1,1
+    sort -r -n -t'|' -k1,1
 }
 
 _jump_list_remote_sessions() {
@@ -93,10 +93,10 @@ _jump_list_remote_sessions() {
                 win_label="$s_windows window"
                 (( s_windows != 1 )) && win_label="$s_windows windows"
 
-                printf "%020d|remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %30s  %-26.26s  %-26.26s\n" \
+                printf "%010d|remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %30s  %-26.26s  %-26.26s\n" \
                     "$sort_key" "$host" "$s_name" "$s_name" "$host" "$win_label" "" \
                     "$uptime_disp" "$age_disp"
-            done | sort -n -t'|' -k1,1 | tee $REMOTE_SESSIONS_CACHE_PATH
+            done | sort -r -n -t'|' -k1,1 | tee $REMOTE_SESSIONS_CACHE_PATH
         ) &
     done
     wait
@@ -114,7 +114,9 @@ _jump_list_panes() {
 
     tmux list-panes -a -F "#{session_name}|#{window_index}|#{pane_index}|#{pane_current_command}|#{pane_tty}|#{pane_id}|#{@last_seen}" |
     while IFS=$'|' read -r s_name w_index p_index p_cmd p_tty p_id last_seen; do
-        [[ "$p_id" == "$this_pane_id" ]] && continue
+
+        # Skip active pane
+        (( $1 )) && [[ "$p_id" == "$this_pane_id" ]] && continue
 
         tty_short="${p_tty##*/}"
         p_proc=$(awk -F'\t' -v tty="$tty_short" '$1 == tty { print $2; exit }' "$fg_cmd_file")
@@ -128,16 +130,20 @@ _jump_list_panes() {
             age="$(_humanize_seconds "$raw_age") ago"
         fi
 
-        printf "%08d|%s|%-15.15s  %3d:%-3d  %-20s  %.55s\n" \
-            "$last_seen" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
+        sort_key="${last_seen:-0}"
+
+        printf "%010d|%s|%-15.15s  %3d:%-3d  %-20s  %.55s\n" \
+            "$sort_key" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
     done |
-    sort -n -t'|' -k1,1
+    sort -r -n -t'|' -k1,1 | 
+    cut -d'|' -f2-
 }
 
 
 case "${1:-sessions}" in
-    all)      _jump_list_all "$2" ;;
-    sessions) _jump_list_sessions ;;
-    panes)    _jump_list_panes ;;
-    *)        _jump_list_sessions ;;
+    all)                _jump_list_all "$2" ;;
+    sessions)           _jump_list_sessions ;;
+    remote_sessions)    _jump_list_remote_sessions "$2" ;;
+    panes)              _jump_list_panes "$2" ;;
+    *)                  _jump_list_sessions ;;
 esac

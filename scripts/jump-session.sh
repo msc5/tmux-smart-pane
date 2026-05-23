@@ -6,6 +6,21 @@ JUMP_LIST="$PLUGIN_DIR/scripts/jump-list.sh"
 PREVIEW="$PLUGIN_DIR/scripts/preview.sh"
 source "$PLUGIN_DIR/scripts/helpers.sh"
 
+# In a managed SSH session: detach to trigger return to local tmux + picker.
+if [[ -n "${TMSP_MANAGED:-}" ]]; then
+    client=$(tmux display-message -p '#{client_name}' 2>/dev/null)
+    tmux detach-client -t "$client"
+    exit 0
+fi
+
+STANDALONE=0
+FALLBACK_SESSION=""
+if [[ "${1:-}" == --standalone ]]; then
+    STANDALONE=1
+    FALLBACK_SESSION="${2:-}"
+
+fi
+
 selected=$(
     fzf --delimiter='|' \
         --with-nth=2.. \
@@ -13,15 +28,12 @@ selected=$(
         --highlight-line \
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \
-        --header 'Jump to pane (tab to swap pane)' \
-        --bind 'tab:become(echo "swap|{r}")' \
-        --bind 'enter:become(echo "jump|{r}")' \
         --preview "$PREVIEW {1}" \
-        < <("$JUMP_LIST" panes)
+        --header 'Jump to Session' \
+        --bind "load:reload-sync($JUMP_LIST all)" \
+        < <("$JUMP_LIST" all 1)
 )
 
-action="${selected%%|*}"
-selected="${selected#*|}"
 p_id="${selected%%|*}"
 
 # None selected from fzf
@@ -30,9 +42,14 @@ if [[ -z "$p_id" ]]; then
     exit 0
 fi
 
-if [[ "$action" = swap ]]; then
-    this_pane_id="$(tmux display-message -p "#{pane_id}")"
-    _swap_pane "$this_pane_id" "$p_id"
+if [[ "$p_id" == remote:* ]]; then
+    rest="${p_id#remote:}"
+    if (( STANDALONE )); then
+        exec "$PLUGIN_DIR/scripts/connect-remote.sh" \
+            "${rest%%:*}" "${rest#*:}" "$FALLBACK_SESSION" "$PLUGIN_DIR"
+    else
+        _remote_jump "${rest%%:*}" "${rest#*:}"
+    fi
 else
     if (( STANDALONE )); then
         target_sess=$(tmux list-panes -a \

@@ -17,4 +17,4 @@ source -- "$SMART_PANE_CACHE"
 IFS=":" read -r old_src old_target <<< "${CACHE[swap-pane]}"
 [[ -z "$old_src" || -z "$old_target" ]] && exit 0
 
-echo "$old_src" | _store_swap_pane "$old_target"
+_swap_pane "$old_src" "$old_target" 

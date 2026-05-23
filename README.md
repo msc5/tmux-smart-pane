@@ -1,4 +1,4 @@
-# 🪟 tmux-smart-pane
+# tmux-smart-pane
 
 fzf-powered pane navigation and **remote session management** for tmux. Jump to any local or remote session, swap panes by recency, and connect to SSH hosts without ever leaving your terminal workflow.
 
@@ -54,6 +54,7 @@ Set options in `tmux.conf` **before** the `run` line:
 | `@smart-pane-undo-swap-key` | `P` | Undo last pane swap |
 | `@smart-pane-lock-key` | `M-=` | Toggle nested-tmux passthrough |
 | `@smart-pane-cache-path` | `~/.local/share/tmux-smart-pane/cache.sh` | Swap-history cache file |
+| `@smart-pane-ssh-hosts` | _(auto)_ | Space-separated list of SSH hosts to query for remote sessions; if unset, hosts are read from `~/.ssh/config` |
 
 Example:
 
@@ -85,23 +86,21 @@ run "~/.config/tmux/plugins/tmux-smart-pane/tmux-smart-pane.tmux"
 
 ## SSH Setup
 
-Remote session support uses SSH ControlMaster so that picker queries and session connections reuse an existing authenticated channel rather than opening a new one each time. Add the following to `~/.ssh/config`:
+These are suggested settings for target hosts in order to improve connection speed and cold-startup time. The most important is to configure SSH ControlMaster so that picker queries and session connections reuse an existing authenticated channel rather than opening a new one each time. These settings should be added to `~/.ssh/config`:
 
 ```
 Host *
     ControlMaster auto
-    ControlPath ~/.ssh/ctrl/%h.sock
+    ControlPath ~/.ssh/ssh-%r@%h:%p
     ControlPersist 60m
-    BatchMode yes
     ServerAliveInterval 30
     ServerAliveCountMax 3
 ```
 
-**What each option does:**
+**Explanation of SSH config options:**
 
 - `ControlMaster auto` + `ControlPath` — multiplexes subsequent connections over an existing socket; connecting to a remote session is near-instant after the first open
 - `ControlPersist 60m` — keeps the socket alive for 60 minutes after the last session ends, so re-connecting stays fast
-- `BatchMode yes` — suppresses interactive password prompts; hosts without key-based auth fail fast instead of hanging the picker
 - `ServerAliveInterval` / `ServerAliveCountMax` — sends keepalives and drops the connection after 90 seconds of silence, preventing stale sockets from blocking future connects
 
 **Remote sshd (`/etc/ssh/sshd_config`):**
@@ -113,20 +112,8 @@ StreamLocalBindUnlink yes
 
 `AllowStreamLocalForwarding yes` is the default on most distros. `StreamLocalBindUnlink yes` lets SSH automatically remove a stale reverse-socket file on reconnect, avoiding `Address already in use` errors if a previous session exited uncleanly.
 
-**Security note:** When you connect to a remote session, the plugin sets the environment variable `TMSP_MANAGED=1` in the remote tmux environment. This tells `jump-session.sh` on the remote to detach (returning you home) instead of opening its own fzf picker when you press `prefix + s`. No socket forwarding or back-channel communication is required for the basic workflow. If you are connecting to untrusted hosts, this environment variable carries no privilege — it only changes picker behaviour.
-
 ## Remote sessions in the picker
 
 Remote sessions are discovered by querying `tmux list-panes` over SSH for every `Host` entry in `~/.ssh/config` (excluding wildcards and `github`). Results are fetched in parallel and cached for the duration of the picker. Sessions are sorted alongside local sessions by recency — the last time you visited a remote session is tracked locally in `~/.local/share/tmux-smart-pane/`.
 
 If a host is unreachable, it is silently skipped (3-second connect timeout, `BatchMode yes`).
-
-## Direct script usage
-
-The scripts can be invoked directly inside a tmux session:
-
-| Script | Description |
-|---|---|
-| `scripts/jump-list.sh sessions` | Print local session listing for fzf |
-| `scripts/jump-list.sh panes` | Print pane listing for fzf (sorted by recency) |
-| `scripts/swap-pane.sh <src_id> <target_id>` | Swap two panes and record to undo cache |

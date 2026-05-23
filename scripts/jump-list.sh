@@ -56,16 +56,24 @@ _jump_list_remote_sessions() {
 
     now="$(date +%s)"
 
-    local ssh_hosts
-    ssh_hosts=$(grep -E '^Host[[:space:]]+' ~/.ssh/config 2>/dev/null \
-        | grep -v -e '\*' -e 'github' | awk '{print $2}')
-
-    [[ -z "$ssh_hosts" ]] && return 0
+    # @smart-pane-ssh-hosts overrides auto-discovery; if unset, parse ~/.ssh/config.
+    local hosts_opt
+    hosts_opt=$(tmux show-option -gqv "@smart-pane-ssh-hosts" 2>/dev/null)
 
     local hosts=()
-    while IFS= read -r h; do
-        hosts+=("$h")
-    done <<< "$ssh_hosts"
+    if [[ -n "$hosts_opt" ]]; then
+        read -ra hosts <<< "$hosts_opt"
+    else
+        local ssh_hosts
+        ssh_hosts=$(grep -E '^Host[[:space:]]+' ~/.ssh/config 2>/dev/null \
+            | grep -v -e '\*' -e 'github' | awk '{print $2}')
+        [[ -z "$ssh_hosts" ]] && return 0
+        while IFS= read -r h; do
+            hosts+=("$h")
+        done <<< "$ssh_hosts"
+    fi
+
+    [[ ${#hosts[@]} -eq 0 ]] && return 0
 
     for host in "${hosts[@]}"; do
         (

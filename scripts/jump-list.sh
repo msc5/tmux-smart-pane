@@ -77,6 +77,7 @@ _jump_list_remote_sessions() {
     [[ ${#hosts[@]} -eq 0 ]] && return 0
 
     for host in "${hosts[@]}"; do
+        [[ "$(hostname)" == "$host" ]] && continue
         (
             ssh -o ConnectTimeout=3 \
                 -o BatchMode=yes \

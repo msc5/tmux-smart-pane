@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Shared helpers — source this file, do not execute it directly.
 
-: "${SMART_PANE_CACHE:=${HOME}/.local/share/tmux-smart-pane/cache.sh}"
-REMOTE_SESSIONS_CACHE_PATH="/tmp/jump-cache-remote-sessions.txt"
+: "${SMART_PANE_BASE_PATH:=${HOME}/.local/share/tmux-smart-pane/}"
+: "${SMART_PANE_CACHE:=${SMART_PANE_BASE_PATH}/swap-cache.sh}"
+: "${REMOTE_SESSIONS_CACHE_PATH:=${SMART_PANE_BASE_PATH}/jump-cache-remote-sessions.txt}"
 
 _humanize_seconds() {
     local t=$1 d h m s

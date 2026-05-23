@@ -53,9 +53,7 @@ _jump_list_remote_sessions() {
         [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] && cat $REMOTE_SESSIONS_CACHE_PATH 
         return
     fi
-
-    touch $REMOTE_SESSIONS_CACHE_PATH
-    echo "" > $REMOTE_SESSIONS_CACHE_PATH
+    truncate -s 0 "$REMOTE_SESSIONS_CACHE_PATH"
 
     now="$(date +%s)"
 

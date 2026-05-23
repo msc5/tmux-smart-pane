@@ -2,6 +2,9 @@
 
 fzf-powered pane navigation and **remote session management** for tmux. Jump to any local or remote session, swap panes by recency, and connect to SSH hosts without ever leaving your terminal workflow.
 
+## Demo
+https://github.com/user-attachments/assets/b66c4c9c-c056-4cd0-b7ab-998d68678479
+
 ## Why this plugin?
 
 Managing remote tmux sessions normally means nesting tmux inside tmux — with all the keybinding conflicts and visual overhead that implies. tmux-smart-pane makes remote sessions first-class citizens: the same fzf picker you use for local sessions lists every tmux session on every configured SSH host. Pick one, and you're there; press `prefix + s` again and you're back home.

@@ -54,6 +54,9 @@ _jump_list_remote_sessions() {
         return
     fi
 
+    touch $REMOTE_SESSIONS_CACHE_PATH
+    echo "" > $REMOTE_SESSIONS_CACHE_PATH
+
     now="$(date +%s)"
 
     # @smart-pane-ssh-hosts overrides auto-discovery; if unset, parse ~/.ssh/config.
@@ -103,10 +106,12 @@ _jump_list_remote_sessions() {
                 printf "%010d|remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %30s  %-26.26s  %-26.26s\n" \
                     "$sort_key" "$host" "$s_name" "$s_name" "$host" "$win_label" "" \
                     "$uptime_disp" "$age_disp"
-            done | sort -r -n -t'|' -k1,1 | tee $REMOTE_SESSIONS_CACHE_PATH
+            done >> $REMOTE_SESSIONS_CACHE_PATH
         ) &
     done
     wait
+
+    cat $REMOTE_SESSIONS_CACHE_PATH | sort -r -n -t'|' -k1,1
 }
 
 _jump_list_panes() {

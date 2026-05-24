@@ -11,8 +11,8 @@ selected=$(
         --highlight-line \
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \
-        --header 'Jump to pane (tab to swap pane)' \
-        --bind 'tab:become(echo "swap|{r}")' \
+        --header 'Jump to pane (ctrl-s: swap pane)' \
+        --bind 'ctrl-s:become(echo "swap|{r}")' \
         --bind 'enter:become(echo "jump|{r}")' \
         --preview "$PREVIEW {1}" \
         < <("$JUMP_LIST" panes)

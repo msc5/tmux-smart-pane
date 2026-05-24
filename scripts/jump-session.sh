@@ -20,7 +20,7 @@ if [[ "${1:-}" == --standalone ]]; then
 
 fi
 
-KILL_BIND="ctrl-x:execute-silent(bash -c 'p=\$1; [[ \$p == %* ]] || exit 0; s=\$(tmux display-message -p -t \"\$p\" \"#{session_name}\" 2>/dev/null); [[ -n \$s ]] && tmux kill-session -t \"\$s\"' -- {1})+reload($JUMP_LIST all 1)"
+KILL_SESSION="$PLUGIN_DIR/scripts/kill-session.sh"
 
 selected=$(
     fzf --delimiter='|' \
@@ -31,9 +31,9 @@ selected=$(
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \
         --preview "$PREVIEW {1}" \
-        --header 'Jump to Session  [ctrl-x: kill session]' \
+        --header 'Jump to Session (ctrl-x: kill session)' \
         --bind "load:reload-sync($JUMP_LIST all; sleep 3)" \
-        --bind "$KILL_BIND" \
+        --bind "ctrl-x:execute-silent($KILL_SESSION {1})+reload($JUMP_LIST all 1)" \
         < <("$JUMP_LIST" all 1)
 )
 

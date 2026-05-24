@@ -29,7 +29,7 @@ selected=$(
         --preview-label ' Preview ' \
         --preview "$PREVIEW {1}" \
         --header 'Jump to Session' \
-        --bind "load:reload-sync($JUMP_LIST all)" \
+        --bind "load:reload-sync($JUMP_LIST all; sleep 3)" \
         < <("$JUMP_LIST" all 1)
 )
 

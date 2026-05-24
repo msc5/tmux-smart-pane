@@ -20,16 +20,20 @@ if [[ "${1:-}" == --standalone ]]; then
 
 fi
 
+KILL_BIND="ctrl-x:execute-silent(bash -c 'p=\$1; [[ \$p == %* ]] || exit 0; s=\$(tmux display-message -p -t \"\$p\" \"#{session_name}\" 2>/dev/null); [[ -n \$s ]] && tmux kill-session -t \"\$s\"' -- {1})+reload($JUMP_LIST all 1)"
+
 selected=$(
     fzf --delimiter='|' \
+        --ansi \
         --with-nth=2.. \
         --layout=reverse \
         --highlight-line \
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \
         --preview "$PREVIEW {1}" \
-        --header 'Jump to Session' \
+        --header 'Jump to Session  [ctrl-x: kill session]' \
         --bind "load:reload-sync($JUMP_LIST all; sleep 3)" \
+        --bind "$KILL_BIND" \
         < <("$JUMP_LIST" all 1)
 )
 
@@ -53,6 +57,14 @@ if [[ "$p_id" == remote:* ]]; then
             "${rest%%:*}" "${rest#*:}" \
             "$saved_session")
         tmux detach-client -E "$cmd"
+    fi
+elif [[ "$p_id" == tmuxinator:* ]]; then
+    session_name="${p_id#tmuxinator:}"
+    tmuxinator start "$session_name"
+    if (( STANDALONE )); then
+        exec tmux attach-session -t "$session_name"
+    else
+        tmux switch-client -t "$session_name"
     fi
 else
     if (( STANDALONE )); then

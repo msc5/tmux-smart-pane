@@ -11,6 +11,7 @@ _jump_list_all() {
     (
         _jump_list_sessions
         _jump_list_remote_sessions $1
+        _jump_list_tmuxinator_sessions
     ) |
     sort -r -n -t'|' -k1,1 |
     cut -d'|' -f2-
@@ -113,6 +114,24 @@ _jump_list_remote_sessions() {
     cat $REMOTE_SESSIONS_CACHE_PATH | sort -r -n -t'|' -k1,1
 }
 
+_jump_list_tmuxinator_sessions() {
+    local enabled
+    enabled=$(tmux show-option -gqv "@smart-pane-tmuxinator" 2>/dev/null)
+    [[ "$enabled" != "on" ]] && return 0
+
+    command -v tmuxinator &>/dev/null || return 0
+
+    local open_sessions
+    open_sessions=$(tmux list-sessions -F "#S" 2>/dev/null || true)
+
+    tmuxinator list -n 2>/dev/null | tail -n +2 | awk '{print $1}' | \
+    while IFS= read -r name; do
+        printf '%s\n' "$open_sessions" | grep -qx "$name" && continue
+        printf "%010d|tmuxinator:%s|\e[2m%-20.20s  (tmuxinator)\e[0m\n" \
+            "0" "$name" "$name"
+    done
+}
+
 _jump_list_panes() {
     local this_pane_id now
     this_pane_id="$(tmux display-message -p "#{pane_id}")"
@@ -152,9 +171,10 @@ _jump_list_panes() {
 
 
 case "${1:-sessions}" in
-    all)                _jump_list_all "$2" ;;
-    sessions)           _jump_list_sessions ;;
-    remote_sessions)    _jump_list_remote_sessions "$2" ;;
-    panes)              _jump_list_panes "$2" ;;
-    *)                  _jump_list_sessions ;;
+    all)                    _jump_list_all "$2" ;;
+    sessions)               _jump_list_sessions ;;
+    remote_sessions)        _jump_list_remote_sessions "$2" ;;
+    tmuxinator_sessions)    _jump_list_tmuxinator_sessions ;;
+    panes)                  _jump_list_panes "$2" ;;
+    *)                      _jump_list_sessions ;;
 esac

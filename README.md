@@ -15,14 +15,19 @@ Managing remote tmux sessions normally means nesting tmux inside tmux — with a
 - **Pane jump / swap** (`prefix + p`) — fzf picker showing all panes sorted by `@last_seen`; press `Enter` to jump, `Tab` to swap the current pane with the selection
 - **Undo swap** (`prefix + P`) — reverses the last pane swap (acts as a toggle)
 - **Nested-tmux passthrough** (`M-=`) — toggle key-forwarding mode so keystrokes flow through to a nested session without prefix conflicts
+- **Tmuxinator integration** _(opt-in)_ — unstarted tmuxinator configs appear at the bottom of the session picker; selecting one starts the session and jumps to it
 
 ## Requirements
 
 - tmux 3.2+
 - fzf
-- bash 4+ (macOS ships bash 3; install via `brew install bash`)
+- bash 4+
 
 ## Installation
+
+**Note:** You should install this plugin on both the local machine you are using to hop to remote tmux sessions as well
+as those remote sessions themselves. When you connect, `tmux-smart-pane` will set a tmux env. variable `TMSP_MANAGED`
+that will tell the remote session to detach on `prefix + s`, rather than opening the remote session picker.
 
 ### With TPM
 
@@ -58,6 +63,7 @@ Set options in `tmux.conf` **before** the `run` line:
 | `@smart-pane-lock-key` | `M-=` | Toggle nested-tmux passthrough |
 | `@smart-pane-cache-path` | `~/.local/share/tmux-smart-pane/cache.sh` | Swap-history cache file |
 | `@smart-pane-ssh-hosts` | _(auto)_ | Space-separated list of SSH hosts to query for remote sessions; if unset, hosts are read from `~/.ssh/config` |
+| `@smart-pane-tmuxinator` | `off` | Set to `on` to enable tmuxinator integration (see below) |
 
 Example:
 
@@ -72,7 +78,8 @@ run "~/.config/tmux/plugins/tmux-smart-pane/tmux-smart-pane.tmux"
 
 | Key | Action |
 |---|---|
-| `Enter` | Switch to session / connect to remote session |
+| `Enter` | Switch to session / connect to remote session / start tmuxinator session |
+| `Ctrl-X` | Kill the selected local session |
 | `Esc` / `Ctrl-C` | Cancel |
 
 ### Pane picker (`prefix + p`)
@@ -86,6 +93,24 @@ run "~/.config/tmux/plugins/tmux-smart-pane/tmux-smart-pane.tmux"
 ### Passthrough mode
 
 `M-=` (no prefix needed) toggles key-forwarding for nested tmux sessions. All keys — including your tmux prefix — pass through to the inner session. Press `M-=` again to restore normal keybindings.
+
+## Tmuxinator integration
+
+When `@smart-pane-tmuxinator on` is set, tmuxinator project configs are listed at the bottom of the session picker alongside live local and remote sessions.
+
+```
+set -g @smart-pane-tmuxinator on
+run "~/.config/tmux/plugins/tmux-smart-pane/tmux-smart-pane.tmux"
+```
+
+**How it works:**
+
+- All tmuxinator configs (`tmuxinator list`) are shown as additional entries, displayed dimmed to distinguish them from running sessions.
+- Any config that already has a matching live tmux session is hidden — once a session is started it appears normally in the list like any other local session.
+- Selecting a tmuxinator entry runs `tmuxinator start <name>` and then switches to the new session.
+- The preview pane shows the tmuxinator YAML config for the selected entry (syntax-highlighted if [`bat`](https://github.com/sharkdp/bat) is installed).
+
+**Requirements:** `tmuxinator` must be on `PATH`. Configs are read from `~/.config/tmuxinator/` or `~/.tmuxinator/`.
 
 ## SSH Setup
 

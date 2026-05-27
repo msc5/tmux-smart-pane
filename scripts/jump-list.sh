@@ -40,9 +40,11 @@ _jump_list_sessions() {
         local win_label="$s_windows window"
         (( s_windows != 1 )) && win_label="$s_windows windows"
 
+        local client_ttys="${s_clients//,/, }"
+
         printf "%010d|%s|%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\n" \
             "$ref_time" "$p_id" "$s_name" "" "$win_label" "$p_cmd" \
-            "$uptime_disp" "$age_disp" "$s_clients"
+            "$uptime_disp" "$age_disp" "$client_ttys"
     done | 
     sort -r -n -t'|' -k1,1
 }

@@ -34,6 +34,7 @@ if (( ! FORCE_LOCAL )) && [[ -n "${TMSP_MANAGED:-}" ]]; then
 fi
 
 KILL_SESSION="$PLUGIN_DIR/scripts/kill-session.sh"
+HEADER="Jump to Session (ctrl-x: kill session)"
 
 selected=$(
     fzf --delimiter='|' \
@@ -44,7 +45,8 @@ selected=$(
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \
         --preview "$PREVIEW {1}" \
-        --header 'Jump to Session (ctrl-x: kill session)' \
+        --prompt "@$(hostname) > " \
+        --header "$HEADER" \
         --bind "load:reload-sync($JUMP_LIST all)" \
         --bind "ctrl-x:execute-silent($KILL_SESSION {1})+reload($JUMP_LIST all 1)" \
         < <("$JUMP_LIST" all 1)

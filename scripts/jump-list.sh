@@ -72,12 +72,18 @@ _jump_list_remote_sessions() {
     if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
         local_host=$(basename "$TMSP_LOCAL_SOCKET" | sed 's/-tmux\.sock$//')
 
+        # On macOS, tmux -S <forwarded-socket> hangs when stdout is a pipe but
+        # exits normally when stdout is a regular file. Capture to a temp file
+        # first to avoid the hang.
+        local _socket_tmp
+        _socket_tmp=$(mktemp)
         tmux -S "$TMSP_LOCAL_SOCKET" list-panes -a \
             -f "#{&&:#{window_active},#{pane_active}}" \
             -F "$TMSP_SESSION_FMT" \
-            2>/dev/null |
-        _format_session_rows "$now" "@$local_host" "local:" "pane_id" "\e[38;5;14m" |
+            2>/dev/null > "$_socket_tmp"
+        _format_session_rows "$now" "@$local_host" "local:" "pane_id" "\e[38;5;14m" < "$_socket_tmp" |
         sort -r -n -t'|' -k1,1
+        rm -f "$_socket_tmp"
     fi
 
     # Return cached SSH results for the remaining hosts; socket results above are always fresh.

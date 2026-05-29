@@ -70,7 +70,7 @@ _jump_list_remote_sessions() {
     # below so other configured hosts are still discovered.
     local local_host=""
     if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
-        local_host=$(basename "$TMSP_LOCAL_SOCKET" | sed 's/-[0-9]\+-tmux\.sock$//')
+        local_host=$(basename "$TMSP_LOCAL_SOCKET" | sed -E 's/-([0-9]+-)?tmux\.sock$//')
 
         # On macOS, tmux -S <forwarded-socket> hangs when stdout is a pipe but
         # exits normally when stdout is a regular file. Capture to a temp file
@@ -91,7 +91,13 @@ _jump_list_remote_sessions() {
         [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] && cat $REMOTE_SESSIONS_CACHE_PATH
         return
     fi
-    truncate -s 0 "$REMOTE_SESSIONS_CACHE_PATH"
+    # Write to a per-run temp file in the same directory as the cache, then
+    # atomically replace the cache with mv. Orphaned SSH jobs from a prior
+    # interrupted run write to their own abandoned temp file and can't
+    # contaminate this run's results.
+    local _ssh_tmp
+    _ssh_tmp=$(mktemp "${REMOTE_SESSIONS_CACHE_PATH}.XXXXXX")
+    trap 'rm -f "$_ssh_tmp"' RETURN
 
     for host in $(_get_ssh_hosts); do
         [[ "$(hostname)" == "$host" ]] && continue
@@ -105,11 +111,12 @@ _jump_list_remote_sessions() {
                  -F '$TMSP_SESSION_FMT'" \
                 2>/dev/null |
             _format_session_rows "$now" " $host" "remote:$host:" "session_name" \
-            >> "$REMOTE_SESSIONS_CACHE_PATH"
+            >> "$_ssh_tmp"
         ) &
     done
     wait
 
+    mv "$_ssh_tmp" "$REMOTE_SESSIONS_CACHE_PATH"
     sort -r -n -t'|' -k1,1 < "$REMOTE_SESSIONS_CACHE_PATH"
 }
 

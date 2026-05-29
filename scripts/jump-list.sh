@@ -66,9 +66,10 @@ _jump_list_remote_sessions() {
     now="$(date +%s)"
 
     # Inside a managed SSH session: read the local machine's sessions directly
-    # from the forwarded socket instead of initiating new SSH connections.
+    # from the forwarded socket (fast, no SSH). Falls through to the SSH scan
+    # below so other configured hosts are still discovered.
+    local local_host=""
     if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
-        local local_host
         local_host=$(basename "$TMSP_LOCAL_SOCKET" | sed 's/-tmux\.sock$//')
 
         tmux -S "$TMSP_LOCAL_SOCKET" list-panes -a \
@@ -77,37 +78,19 @@ _jump_list_remote_sessions() {
             2>/dev/null |
         _format_session_rows "$now" "@$local_host" "local:" "pane_id" "\e[0;34m" |
         sort -r -n -t'|' -k1,1
-        return
     fi
 
-    # Return cache if one exists, otherwise exit immediately.
+    # Return cached SSH results for the remaining hosts; socket results above are always fresh.
     if (( ${1:-0} )); then
         [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] && cat $REMOTE_SESSIONS_CACHE_PATH
         return
     fi
     truncate -s 0 "$REMOTE_SESSIONS_CACHE_PATH"
 
-    # @smart-pane-ssh-hosts overrides auto-discovery; if unset, parse ~/.ssh/config.
-    local hosts_opt
-    hosts_opt=$(tmux show-option -gqv "@smart-pane-ssh-hosts" 2>/dev/null)
-
-    local hosts=()
-    if [[ -n "$hosts_opt" ]]; then
-        read -ra hosts <<< "$hosts_opt"
-    else
-        local ssh_hosts
-        ssh_hosts=$(grep -E '^Host[[:space:]]+' ~/.ssh/config 2>/dev/null \
-            | grep -v -e '\*' -e 'github' | awk '{print $2}')
-        [[ -z "$ssh_hosts" ]] && return 0
-        while IFS= read -r h; do
-            hosts+=("$h")
-        done <<< "$ssh_hosts"
-    fi
-
-    [[ ${#hosts[@]} -eq 0 ]] && return 0
-
-    for host in "${hosts[@]}"; do
+    for host in $(_get_ssh_hosts); do
         [[ "$(hostname)" == "$host" ]] && continue
+        # Skip the local machine — already enumerated via the forwarded socket above.
+        [[ -n "$local_host" && "$local_host" == "$host" ]] && continue
         (
             ssh -o ConnectTimeout=3 \
                 -o BatchMode=yes \
@@ -181,10 +164,10 @@ _jump_list_panes() {
 
 
 case "${1:-sessions}" in
-    all)                    _jump_list_all "$2" ;;
-    sessions)               _jump_list_sessions ;;
-    remote_sessions)        _jump_list_remote_sessions "$2" ;;
-    tmuxinator_sessions)    _jump_list_tmuxinator_sessions ;;
-    panes)                  _jump_list_panes "$2" ;;
+    "all")                    _jump_list_all "$2" ;;
+    "sessions")               _jump_list_sessions ;;
+    "remote_sessions")        _jump_list_remote_sessions "$2" ;;
+    "tmuxinator_sessions")    _jump_list_tmuxinator_sessions ;;
+    "panes")                  _jump_list_panes "$2" ;;
     *)                      _jump_list_sessions ;;
 esac

@@ -53,3 +53,18 @@ _sed_inplace() {
         sed -i '' "$@"
     fi
 }
+
+_get_ssh_hosts() {
+    # @smart-pane-ssh-hosts overrides auto-discovery; if unset, parse ~/.ssh/config.
+    local hosts_opt
+    hosts_opt=$(tmux show-option -gqv "@smart-pane-ssh-hosts" 2>/dev/null)
+
+    if [[ -n "$hosts_opt" ]]; then
+        echo "$hosts_opt"
+    else
+        grep -E '^Host[[:space:]]+' ~/.ssh/config 2>/dev/null \
+            | grep -v -e '\*' -e 'github' \
+            | awk '{print $2}' \
+            | xargs
+    fi
+}

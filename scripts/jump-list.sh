@@ -70,7 +70,7 @@ _jump_list_remote_sessions() {
     # below so other configured hosts are still discovered.
     local local_host=""
     if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
-        local_host=$(basename "$TMSP_LOCAL_SOCKET" | sed 's/-tmux\.sock$//')
+        local_host=$(basename "$TMSP_LOCAL_SOCKET" | sed 's/-[0-9]\+-tmux\.sock$//')
 
         # On macOS, tmux -S <forwarded-socket> hangs when stdout is a pipe but
         # exits normally when stdout is a regular file. Capture to a temp file

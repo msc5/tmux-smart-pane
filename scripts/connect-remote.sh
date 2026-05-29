@@ -13,15 +13,15 @@ remote_socket_path="/tmp/$(hostname)-$(date +%s)-tmux.sock"
 # TMSP_MANAGED: signals jump-session.sh on the remote it's in a managed session.
 # TMSP_LOCAL_SOCKET: path on the remote where the local socket is forwarded.
 # Both are unset when tmux exits so they don't linger.
-remote_cmd=$(printf \
-    'clear; tmux set-environment -g TMSP_MANAGED 1 >/dev/null 2>&1; tmux set-environment -g TMSP_LOCAL_SOCKET %q >/dev/null 2>&1; tmux new-session -As %q; tmux set-environment -gu TMSP_MANAGED >/dev/null 2>&1; tmux set-environment -gu TMSP_LOCAL_SOCKET >/dev/null 2>&1' \
-    "$remote_socket_path" "$sess")
 
-ssh -t \
-    -R "${remote_socket_path}:${local_socket_path}" \
-    "$host" \
-    "$remote_cmd" \
-|| true
+ssh -t -R "${remote_socket_path}:${local_socket_path}" "$host" "
+clear
+tmux set-environment -g TMSP_MANAGED 1 >/dev/null 2>&1
+tmux set-environment -g TMSP_LOCAL_SOCKET $(printf %q "$remote_socket_path") >/dev/null 2>&1
+tmux new-session -As $(printf %q "$sess")
+tmux set-environment -gu TMSP_MANAGED >/dev/null 2>&1
+tmux set-environment -gu TMSP_LOCAL_SOCKET >/dev/null 2>&1
+"
 
 # Update the sort timestamp for this session in the remote cache so it sorts to the top.
 _sed_inplace -E "/remote:$host:$sess/ s/[0-9]+/$(date +%s)/" "$REMOTE_SESSIONS_CACHE_PATH"

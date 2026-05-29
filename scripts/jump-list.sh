@@ -33,7 +33,7 @@ _format_session_rows() {
         local win_label="$s_windows window"
         (( s_windows != 1 )) && win_label="$s_windows windows"
 
-        printf "%010d|%s|${color}%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\e[0m\n" \
+        printf "%010d|%s|${color}%-20.20s  %-20s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\e[0m\n" \
             "$ref" "$id" "$s_name" "$host_label" "$win_label" "$p_cmd" \
             "up $(_humanize_seconds "$uptime_secs")" \
             "active $(_humanize_seconds "$age_secs") ago" \
@@ -57,7 +57,7 @@ _jump_list_sessions() {
 
     tmux list-panes -a -f "#{&&:#{window_active},#{pane_active}}" \
         -F "$TMSP_SESSION_FMT" |
-    _format_session_rows "$now" "$(hostname)" "" "pane_id" "\e[38;5;12m" |
+    _format_session_rows "$now" " $(hostname)" "" "pane_id" "\e[38;5;12m" |
     sort -r -n -t'|' -k1,1
 }
 
@@ -81,7 +81,7 @@ _jump_list_remote_sessions() {
             -f "#{&&:#{window_active},#{pane_active}}" \
             -F "$TMSP_SESSION_FMT" \
             2>/dev/null > "$_socket_tmp"
-        _format_session_rows "$now" "@$local_host" "local:" "pane_id" "\e[38;5;14m" < "$_socket_tmp" |
+        _format_session_rows "$now" "󱞥 $local_host" "local:" "pane_id" "\e[38;5;14m" < "$_socket_tmp" |
         sort -r -n -t'|' -k1,1
         rm -f "$_socket_tmp"
     fi
@@ -104,7 +104,7 @@ _jump_list_remote_sessions() {
                 "tmux list-panes -a -f '#{&&:#{window_active},#{pane_active}}' \
                  -F '$TMSP_SESSION_FMT'" \
                 2>/dev/null |
-            _format_session_rows "$now" "@$host" "remote:$host:" "session_name" \
+            _format_session_rows "$now" " $host" "remote:$host:" "session_name" \
             >> "$REMOTE_SESSIONS_CACHE_PATH"
         ) &
     done

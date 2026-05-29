@@ -31,6 +31,7 @@ selected=$(
         --with-nth=2.. \
         --layout=reverse \
         --highlight-line \
+        --tiebreak=index \
         --preview-window 'bottom,70%' \
         --preview-label ' Preview ' \
         --preview "$PREVIEW {1}" \

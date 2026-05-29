@@ -57,7 +57,7 @@ _jump_list_sessions() {
 
     tmux list-panes -a -f "#{&&:#{window_active},#{pane_active}}" \
         -F "$TMSP_SESSION_FMT" |
-    _format_session_rows "$now" " $(hostname)" "" "pane_id" "\e[38;5;12m" |
+    _format_session_rows "$now" " $(hostname)" "" "pane_id" "\e[0;34m" |
     sort -r -n -t'|' -k1,1
 }
 
@@ -81,7 +81,7 @@ _jump_list_remote_sessions() {
             -f "#{&&:#{window_active},#{pane_active}}" \
             -F "$TMSP_SESSION_FMT" \
             2>/dev/null > "$_socket_tmp"
-        _format_session_rows "$now" "󱞥 $local_host" "local:" "pane_id" "\e[38;5;14m" < "$_socket_tmp" |
+        _format_session_rows "$now" " $local_host" "local:" "pane_id" "\e[0;32m" < "$_socket_tmp" |
         sort -r -n -t'|' -k1,1
         rm -f "$_socket_tmp"
     fi

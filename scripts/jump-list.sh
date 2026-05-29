@@ -57,7 +57,7 @@ _jump_list_sessions() {
 
     tmux list-panes -a -f "#{&&:#{window_active},#{pane_active}}" \
         -F "$TMSP_SESSION_FMT" |
-    _format_session_rows "$now" "" "" "pane_id" |
+    _format_session_rows "$now" "@$(hostname)" "" "pane_id" |
     sort -r -n -t'|' -k1,1
 }
 

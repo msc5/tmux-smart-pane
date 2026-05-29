@@ -169,5 +169,5 @@ case "${1:-sessions}" in
     "remote_sessions")        _jump_list_remote_sessions "$2" ;;
     "tmuxinator_sessions")    _jump_list_tmuxinator_sessions ;;
     "panes")                  _jump_list_panes "$2" ;;
-    *)                      _jump_list_sessions ;;
+    *)                        _jump_list_sessions ;;
 esac

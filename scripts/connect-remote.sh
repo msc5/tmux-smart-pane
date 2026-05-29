@@ -8,7 +8,7 @@ sess="$2"
 saved_session="$3"
 
 local_socket_path=$(tmux display-message -p "#{socket_path}")
-remote_socket_path="/tmp/$(hostname)-tmux.sock"
+remote_socket_path="/tmp/$(hostname)-$(date +%s)-tmux.sock"
 
 # TMSP_MANAGED: signals jump-session.sh on the remote it's in a managed session.
 # TMSP_LOCAL_SOCKET: path on the remote where the local socket is forwarded.

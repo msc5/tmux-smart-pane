@@ -15,7 +15,7 @@ TMSP_SESSION_FMT="#{session_last_attached}|#{session_created}|#{session_name}|#{
 #   id_field="pane_id"       — use $p_id  (local sessions, forwarded socket)
 #   id_field="session_name"  — use $s_name (SSH remotes; connect-remote.sh needs session name)
 _format_session_rows() {
-    local now="$1" host_label="$2" id_prefix="$3" id_field="${4:-pane_id}"
+    local now="$1" host_label="$2" id_prefix="$3" id_field="${4:-pane_id}" color="$5"
     while IFS='|' read -r s_last s_created s_name s_windows s_clients p_cmd p_id p_last_seen; do
         local ref="${p_last_seen:-0}"
         (( ref == 0 )) && ref="${s_last:-0}"
@@ -33,7 +33,7 @@ _format_session_rows() {
         local win_label="$s_windows window"
         (( s_windows != 1 )) && win_label="$s_windows windows"
 
-        printf "%010d|%s|%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\n" \
+        printf "%010d|%s|${color}%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\e[0m\n" \
             "$ref" "$id" "$s_name" "$host_label" "$win_label" "$p_cmd" \
             "up $(_humanize_seconds "$uptime_secs")" \
             "active $(_humanize_seconds "$age_secs") ago" \
@@ -57,7 +57,7 @@ _jump_list_sessions() {
 
     tmux list-panes -a -f "#{&&:#{window_active},#{pane_active}}" \
         -F "$TMSP_SESSION_FMT" |
-    _format_session_rows "$now" "@$(hostname)" "" "pane_id" |
+    _format_session_rows "$now" "@$(hostname)" "" "pane_id" "\e[0;32m" |
     sort -r -n -t'|' -k1,1
 }
 
@@ -75,7 +75,7 @@ _jump_list_remote_sessions() {
             -f "#{&&:#{window_active},#{pane_active}}" \
             -F "$TMSP_SESSION_FMT" \
             2>/dev/null |
-        _format_session_rows "$now" "@$local_host" "local:" "pane_id" |
+        _format_session_rows "$now" "@$local_host" "local:" "pane_id" "\e[0;34m" |
         sort -r -n -t'|' -k1,1
         return
     fi

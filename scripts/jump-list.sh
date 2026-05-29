@@ -7,6 +7,40 @@
 #   jump-list.sh panes      — one row per pane, sorted by @last_seen recency
 source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
+# Shared tmux format for all session-listing paths (local, socket, SSH).
+TMSP_SESSION_FMT="#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}|#{session_attached_list}|#{pane_current_command}|#{pane_id}|#{@last_seen}"
+
+# Reads '|'-delimited session rows from stdin; emits sort_key|id|display rows.
+# Args: now  host_label  id_prefix  id_field (pane_id|session_name)
+#   id_field="pane_id"       — use $p_id  (local sessions, forwarded socket)
+#   id_field="session_name"  — use $s_name (SSH remotes; connect-remote.sh needs session name)
+_format_session_rows() {
+    local now="$1" host_label="$2" id_prefix="$3" id_field="${4:-pane_id}"
+    while IFS='|' read -r s_last s_created s_name s_windows s_clients p_cmd p_id p_last_seen; do
+        local ref="${p_last_seen:-0}"
+        (( ref == 0 )) && ref="${s_last:-0}"
+        (( ref == 0 )) && ref="$s_created"
+        (( ref < 0 )) && ref=0
+
+        local id
+        [[ "$id_field" == "session_name" ]] && id="${id_prefix}${s_name}" || id="${id_prefix}${p_id}"
+
+        local age_secs=$((now - ref))
+        (( age_secs < 0 )) && age_secs=0
+        local uptime_secs=$((now - s_created))
+        (( uptime_secs < 0 )) && uptime_secs=0
+
+        local win_label="$s_windows window"
+        (( s_windows != 1 )) && win_label="$s_windows windows"
+
+        printf "%010d|%s|%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\n" \
+            "$ref" "$id" "$s_name" "$host_label" "$win_label" "$p_cmd" \
+            "up $(_humanize_seconds "$uptime_secs")" \
+            "active $(_humanize_seconds "$age_secs") ago" \
+            "${s_clients//,/, }"
+    done
+}
+
 _jump_list_all() {
     (
         _jump_list_sessions
@@ -21,44 +55,37 @@ _jump_list_sessions() {
     local now
     now="$(date +%s)"
 
-    # Local sessions — sorted and flushed immediately.
     tmux list-panes -a -f "#{&&:#{window_active},#{pane_active}}" \
-        -F "#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}|#{session_attached_list}|#{pane_current_command}|#{pane_id}|#{@last_seen}" |
-    while IFS=$'|' read -r s_last_attached s_created s_name s_windows s_clients p_cmd p_id p_last_seen; do
-
-        local uptime_secs=$((now - s_created))
-        (( uptime_secs < 0 )) && uptime_secs=0
-        local uptime_disp="up $(_humanize_seconds "$uptime_secs")"
-
-        local ref_time="${p_last_seen:-0}"
-        (( ref_time == 0 )) && ref_time="${s_last_attached:-0}"
-        (( ref_time == 0 )) && ref_time="$s_created"
-        local age_secs=$((now - ref_time))
-        (( age_secs < 0 )) && age_secs=0
-        local age_disp="active $(_humanize_seconds "$age_secs") ago"
-
-        local win_label="$s_windows window"
-        (( s_windows != 1 )) && win_label="$s_windows windows"
-
-        local client_ttys="${s_clients//,/, }"
-
-        printf "%010d|%s|%-20.20s  %-15s  %-11s  %-30s  %-26.26s  %-26.26s  %-30s\n" \
-            "$ref_time" "$p_id" "$s_name" "" "$win_label" "$p_cmd" \
-            "$uptime_disp" "$age_disp" "$client_ttys"
-    done | 
+        -F "$TMSP_SESSION_FMT" |
+    _format_session_rows "$now" "" "" "pane_id" |
     sort -r -n -t'|' -k1,1
 }
 
 _jump_list_remote_sessions() {
+    local now
+    now="$(date +%s)"
 
-    # Return cache if one exists, otherwise exit immediately
-    if (( $1 )); then
-        [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] && cat $REMOTE_SESSIONS_CACHE_PATH 
+    # Inside a managed SSH session: read the local machine's sessions directly
+    # from the forwarded socket instead of initiating new SSH connections.
+    if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
+        local local_host
+        local_host=$(basename "$TMSP_LOCAL_SOCKET" | sed 's/-tmux\.sock$//')
+
+        tmux -S "$TMSP_LOCAL_SOCKET" list-panes -a \
+            -f "#{&&:#{window_active},#{pane_active}}" \
+            -F "$TMSP_SESSION_FMT" \
+            2>/dev/null |
+        _format_session_rows "$now" "@$local_host" "local:" "pane_id" |
+        sort -r -n -t'|' -k1,1
+        return
+    fi
+
+    # Return cache if one exists, otherwise exit immediately.
+    if (( ${1:-0} )); then
+        [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] && cat $REMOTE_SESSIONS_CACHE_PATH
         return
     fi
     truncate -s 0 "$REMOTE_SESSIONS_CACHE_PATH"
-
-    now="$(date +%s)"
 
     # @smart-pane-ssh-hosts overrides auto-discovery; if unset, parse ~/.ssh/config.
     local hosts_opt
@@ -86,34 +113,15 @@ _jump_list_remote_sessions() {
                 -o BatchMode=yes \
                 "$host" \
                 "tmux list-panes -a -f '#{&&:#{window_active},#{pane_active}}' \
-                 -F '#{session_last_attached}|#{session_created}|#{session_name}|#{session_windows}|#{@last_seen}'" \
+                 -F '$TMSP_SESSION_FMT'" \
                 2>/dev/null |
-            while IFS='|' read -r s_last s_created s_name s_windows p_last_seen; do
-                # Sort and display age by @last_seen; fall back to session_last_attached.
-                ref="${p_last_seen:-0}"
-                (( ref == 0 )) && ref="${s_last:-0}"
-                (( ref == 0 )) && ref="$s_created"
-                sort_key=$ref
-                age_secs=$((now - ref))
-                (( sort_key < 0 )) && sort_key=0
-                age_disp="active $(_humanize_seconds "$age_secs") ago"
-
-                uptime_secs=$((now - s_created))
-                (( uptime_secs < 0 )) && uptime_secs=0
-                uptime_disp="up $(_humanize_seconds "$uptime_secs")"
-
-                win_label="$s_windows window"
-                (( s_windows != 1 )) && win_label="$s_windows windows"
-
-                printf "%010d|remote:%s:%s|%-20.20s  @%-14.14s  %-11s  %30s  %-26.26s  %-26.26s\n" \
-                    "$sort_key" "$host" "$s_name" "$s_name" "$host" "$win_label" "" \
-                    "$uptime_disp" "$age_disp"
-            done >> $REMOTE_SESSIONS_CACHE_PATH
+            _format_session_rows "$now" "@$host" "remote:$host:" "session_name" \
+            >> "$REMOTE_SESSIONS_CACHE_PATH"
         ) &
     done
     wait
 
-    cat $REMOTE_SESSIONS_CACHE_PATH | sort -r -n -t'|' -k1,1
+    sort -r -n -t'|' -k1,1 < "$REMOTE_SESSIONS_CACHE_PATH"
 }
 
 _jump_list_tmuxinator_sessions() {
@@ -167,7 +175,7 @@ _jump_list_panes() {
         printf "%010d|%s|%-15.15s  %3d:%-3d  %-20s  %.55s\n" \
             "$sort_key" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
     done |
-    sort -r -n -t'|' -k1,1 | 
+    sort -r -n -t'|' -k1,1 |
     cut -d'|' -f2-
 }
 

@@ -15,7 +15,6 @@ tmux set-hook -g pane-focus-in \
 
 UNDO_KEY=$(_get_opt "@smart-pane-undo-swap-key" "P")
 JUMP_SESSION_KEY=$(_get_opt "@smart-pane-jump-session-key" "s")
-JUMP_SESSION_LOCAL_KEY=$(_get_opt "@smart-pane-jump-session-key" "C-s")
 JUMP_PANE_KEY=$(_get_opt "@smart-pane-jump-pane-key" "p")
 LOCK_KEY=$(_get_opt "@smart-pane-lock-key" "M-=")
 
@@ -23,8 +22,6 @@ tmux bind "$UNDO_KEY" run-shell \
     "$CURRENT_DIR/scripts/undo-swap-pane.sh"
 tmux bind "$JUMP_SESSION_KEY" display-popup -w "100%" -h "100%" -b none \
     -E "$CURRENT_DIR/scripts/jump-session.sh"
-tmux bind "$JUMP_SESSION_LOCAL_KEY" display-popup -w "100%" -h "100%" -b none \
-    -E "$CURRENT_DIR/scripts/jump-session.sh --force-local"
 tmux bind "$JUMP_PANE_KEY" display-popup -w "100%" -h "100%" -b none \
     -E "$CURRENT_DIR/scripts/jump-pane.sh"
 

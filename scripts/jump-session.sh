@@ -6,7 +6,6 @@ JUMP_LIST="$PLUGIN_DIR/scripts/jump-list.sh"
 PREVIEW="$PLUGIN_DIR/scripts/preview.sh"
 
 STANDALONE=0
-FORCE_LOCAL=0
 FALLBACK_SESSION=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -15,10 +14,6 @@ while [[ $# -gt 0 ]]; do
             FALLBACK_SESSION="${2:-}"
             shift 2
             ;;
-        --force-local)
-            FORCE_LOCAL=1
-            shift
-            ;;
         *)
             echo "Unknown argument: $1"
             exit 1
@@ -26,12 +21,6 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# In a managed SSH session: detach to trigger return to local tmux + picker.
-if (( ! FORCE_LOCAL )) && [[ -n "${TMSP_MANAGED:-}" ]]; then
-    client=$(tmux display-message -p '#{client_name}' 2>/dev/null)
-    tmux detach-client -t "$client"
-    exit 0
-fi
 
 KILL_SESSION="$PLUGIN_DIR/scripts/kill-session.sh"
 HEADER="Jump to Session (ctrl-x: kill session)"
@@ -62,7 +51,13 @@ fi
 
 if [[ "$p_id" == remote:* ]]; then
     rest="${p_id#remote:}"
-    if (( STANDALONE )); then
+    if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
+        # On a managed remote — signal connect-remote.sh via the local socket
+        # to initiate the SSH connection from the local machine.
+        tmux -S "$TMSP_LOCAL_SOCKET" set-environment -g \
+            TMSP_PENDING_REMOTE "${rest%%:*}:${rest#*:}" 2>/dev/null || true
+        tmux detach-client -t "$(tmux display-message -p '#{client_name}' 2>/dev/null)"
+    elif (( STANDALONE )); then
         exec "$PLUGIN_DIR/scripts/connect-remote.sh" \
             "${rest%%:*}" "${rest#*:}" "$FALLBACK_SESSION"
     else
@@ -72,6 +67,13 @@ if [[ "$p_id" == remote:* ]]; then
             "${rest%%:*}" "${rest#*:}" \
             "$saved_session")
         tmux detach-client -E "$cmd"
+    fi
+elif [[ "$p_id" == local:* ]]; then
+    actual_pane_id="${p_id#local:}"
+    if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
+        tmux -S "$TMSP_LOCAL_SOCKET" set-environment -g \
+            TMSP_PENDING_LOCAL "$actual_pane_id" 2>/dev/null || true
+        tmux detach-client -t "$(tmux display-message -p '#{client_name}' 2>/dev/null)"
     fi
 elif [[ "$p_id" == tmuxinator:* ]]; then
     session_name="${p_id#tmuxinator:}"

@@ -24,6 +24,14 @@ elif [[ "$id" == tmuxinator:* ]]; then
     else
         printf "(tmuxinator config not found: %s)\n" "$name"
     fi
+elif [[ "$id" == local:* ]]; then
+    pane_id="${id#local:}"
+    if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
+        tmux -S "$TMSP_LOCAL_SOCKET" capture-pane -ep -t "$pane_id" 2>/dev/null \
+            || printf "(session unavailable)\n"
+    else
+        printf "(local socket not available)\n"
+    fi
 else
     tmux capture-pane -ep -t "$id"
 fi

@@ -1,21 +1,22 @@
 # tmux-smart-pane
 
+<img width="1540" height="495" alt="tmux-smart-pane-header-image" src="https://github.com/user-attachments/assets/47958ea6-ebc5-4eed-8650-d79aa0d57560" />
 fzf-powered pane navigation and **remote session management** for tmux. Jump to any local or remote session, swap panes by recency, and connect to SSH hosts without ever leaving your terminal workflow.
 
 ## Demo
-https://github.com/user-attachments/assets/b66c4c9c-c056-4cd0-b7ab-998d68678479
 
-## Why this plugin?
+https://github.com/user-attachments/assets/f081fe81-fc5a-4413-a451-847d163bf65a
 
-Managing remote tmux sessions normally means nesting tmux inside tmux — with all the keybinding conflicts and visual overhead that implies. tmux-smart-pane makes remote sessions first-class citizens: the same fzf picker you use for local sessions lists every tmux session on every configured SSH host. Pick one, and you're there; press `prefix + s` again and you're back home.
+## Why use this plugin?
+
+Managing remote tmux sessions normally means nesting tmux inside tmux — with all the keybinding conflicts and visual overhead that implies. tmux-smart-pane makes remote sessions first-class citizens: the same fzf picker you to navigate between local sessions now also lists every tmux session on every configured SSH host. Pick one, and you're there; press `prefix + s` again and you're back home (or wherever else you want to go).
 
 ## Features
 
 - **Session jump** (`prefix + s`) — fzf picker showing local and remote sessions sorted by recency; remote sessions appear alongside local ones and connect via SSH automatically
 - **Pane jump / swap** (`prefix + p`) — fzf picker showing all panes sorted by `@last_seen`; press `Enter` to jump, `Tab` to swap the current pane with the selection
 - **Undo swap** (`prefix + P`) — reverses the last pane swap (acts as a toggle)
-- **Nested-tmux passthrough** (`M-=`) — toggle key-forwarding mode so keystrokes flow through to a nested session without prefix conflicts
-- **Tmuxinator integration** _(opt-in)_ — unstarted tmuxinator configs appear at the bottom of the session picker; selecting one starts the session and jumps to it
+- **Tmuxinator integration** _(opt-in - see [configuration](#configuration))_ — configured [tmuxinator](https://github.com/tmuxinator/tmuxinator) configs (`tmuxinator list`) appear at the bottom of the session picker; selecting one starts the session and jumps to it
 
 ## Requirements
 
@@ -25,9 +26,8 @@ Managing remote tmux sessions normally means nesting tmux inside tmux — with a
 
 ## Installation
 
-**Note:** You should install this plugin on both the local machine you are using to hop to remote tmux sessions as well
-as those remote sessions themselves. When you connect, `tmux-smart-pane` will set a tmux env. variable `TMSP_MANAGED`
-that will tell the remote session to detach on `prefix + s`, rather than opening the remote session picker.
+**Note:** ❗ You should install this plugin on both the local machine you are using to hop to remote tmux sessions as well
+as those remote sessions themselves.
 
 ### With TPM
 
@@ -55,15 +55,22 @@ Reload: `tmux source ~/.config/tmux/tmux.conf`
 
 Set options in `tmux.conf` **before** the `run` line:
 
-| Option | Default | Description |
-|---|---|---|
-| `@smart-pane-jump-session-key` | `s` | Open session / remote-session picker |
-| `@smart-pane-jump-pane-key` | `p` | Open pane jump / swap picker |
-| `@smart-pane-undo-swap-key` | `P` | Undo last pane swap |
-| `@smart-pane-lock-key` | `M-=` | Toggle nested-tmux passthrough |
-| `@smart-pane-cache-path` | `~/.local/share/tmux-smart-pane/cache.sh` | Swap-history cache file |
-| `@smart-pane-ssh-hosts` | _(auto)_ | Space-separated list of SSH hosts to query for remote sessions; if unset, hosts are read from `~/.ssh/config` |
-| `@smart-pane-tmuxinator` | `off` | Set to `on` to enable tmuxinator integration (see below) |
+### `@smart-pane-jump-session-key` (default: `s`)
+Open session / remote-session picker
+
+### `@smart-pane-jump-pane-key` (default: `p`)
+Open pane jump / swap picker
+
+### `@smart-pane-undo-swap-key` (default: `P`) 
+Undo last pane swap
+
+### `@smart-pane-cache-path` (default: `~/.local/share/tmux-smart-pane/cache.sh`)
+Swap-history cache file
+### `@smart-pane-ssh-hosts` _(auto)_ 
+Space-separated list of SSH hosts to query for remote sessions; if unset, hosts are read from `~/.ssh/config`
+
+### `@smart-pane-tmuxinator` (default: `off`)
+Set to `on` to enable tmuxinator integration (see [tmuxinator integration](#tmuxinator integration))
 
 Example:
 
@@ -89,10 +96,6 @@ run "~/.config/tmux/plugins/tmux-smart-pane/tmux-smart-pane.tmux"
 | `Enter` | Jump to pane |
 | `Tab` | Swap current pane with selection and record to undo cache |
 | `Esc` / `Ctrl-C` | Cancel |
-
-### Passthrough mode
-
-`M-=` (no prefix needed) toggles key-forwarding for nested tmux sessions. All keys — including your tmux prefix — pass through to the inner session. Press `M-=` again to restore normal keybindings.
 
 ## Tmuxinator integration
 

@@ -21,6 +21,7 @@ tmux set-environment -g TMSP_LOCAL_SOCKET $(printf %q "$remote_socket_path") >/d
 tmux new-session -As $(printf %q "$sess")
 tmux set-environment -gu TMSP_MANAGED >/dev/null 2>&1
 tmux set-environment -gu TMSP_LOCAL_SOCKET >/dev/null 2>&1
+rm -f $(printf %q "$remote_socket_path") 2>/dev/null
 "
 
 # Update the sort timestamp for this session in the remote cache so it sorts to the top.

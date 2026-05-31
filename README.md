@@ -9,7 +9,7 @@ https://github.com/user-attachments/assets/f081fe81-fc5a-4413-a451-847d163bf65a
 
 ## Why use this plugin?
 
-Managing remote tmux sessions normally means nesting tmux inside tmux — with all the keybinding conflicts and visual overhead that implies. tmux-smart-pane makes remote sessions first-class citizens: the same fzf picker you to navigate between local sessions now also lists every tmux session on every configured SSH host. Pick one, and you're there; press `prefix + s` again and you're back home (or wherever else you want to go).
+Managing remote tmux sessions normally means nesting tmux inside tmux — with all the keybinding conflicts and visual overhead that implies. tmux-smart-pane makes remote sessions first-class citizens: the same fzf picker you use to navigate between local sessions now also lists every tmux session on every configured SSH host. Pick one, and you're there; press `prefix + s` again and you're back home (or wherever else you want to go).
 
 ## Features
 
@@ -26,8 +26,7 @@ Managing remote tmux sessions normally means nesting tmux inside tmux — with a
 
 ## Installation
 
-**Note:** ❗ You should install this plugin on both the local machine you are using to hop to remote tmux sessions as well
-as those remote sessions themselves.
+**Note:** ❗ You should install this plugin on both the local machine you are using to hop to remote tmux sessions as well as those remote sessions themselves. When you connect, the plugin sets `TMSP_MANAGED=1` in the remote tmux environment so that `prefix + s` on the remote detaches you cleanly back to the local picker instead of opening a separate remote picker. It also forwards your local tmux socket to the remote over SSH, so from inside a managed session you can jump back to local sessions — or to other remotes — without manually chaining SSH commands.
 
 ### With TPM
 
@@ -55,22 +54,23 @@ Reload: `tmux source ~/.config/tmux/tmux.conf`
 
 Set options in `tmux.conf` **before** the `run` line:
 
-### `@smart-pane-jump-session-key` (default: `s`)
-Open session / remote-session picker
+### `@smart-pane-jump-session-key` 
+(default: `s`) Open session / remote-session picker
 
-### `@smart-pane-jump-pane-key` (default: `p`)
-Open pane jump / swap picker
+### `@smart-pane-jump-pane-key` 
+(default: `p`) Open pane jump / swap picker
 
-### `@smart-pane-undo-swap-key` (default: `P`) 
-Undo last pane swap
+### `@smart-pane-undo-swap-key` 
+(default: `P`) Undo last pane swap
 
-### `@smart-pane-cache-path` (default: `~/.local/share/tmux-smart-pane/cache.sh`)
-Swap-history cache file
-### `@smart-pane-ssh-hosts` _(auto)_ 
-Space-separated list of SSH hosts to query for remote sessions; if unset, hosts are read from `~/.ssh/config`
+### `@smart-pane-cache-path` 
+(default: `~/.local/share/tmux-smart-pane/swap-cache.sh`) Swap-history cache file
 
-### `@smart-pane-tmuxinator` (default: `off`)
-Set to `on` to enable tmuxinator integration (see [tmuxinator integration](#tmuxinator integration))
+### `@smart-pane-ssh-hosts`
+_(auto)_ Space-separated list of SSH hosts to query for remote sessions; if unset, hosts are read from `~/.ssh/config`
+
+### `@smart-pane-tmuxinator` 
+(default: `off`) Set to `on` to enable tmuxinator integration (see [tmuxinator integration](#tmuxinator-integration))
 
 Example:
 
@@ -145,6 +145,12 @@ StreamLocalBindUnlink yes
 
 ## Remote sessions in the picker
 
-Remote sessions are discovered by querying `tmux list-panes` over SSH for every `Host` entry in `~/.ssh/config` (excluding wildcards and `github`). Results are fetched in parallel and cached for the duration of the picker. Sessions are sorted alongside local sessions by recency — the last time you visited a remote session is tracked locally in `~/.local/share/tmux-smart-pane/`.
+Remote sessions are discovered by querying `tmux list-panes` over SSH for every `Host` entry in `~/.ssh/config` (excluding wildcards and `github`). Results are fetched in parallel and written to a local cache file (`~/.local/share/tmux-smart-pane/`). The picker opens immediately using the cached results while a background refresh runs, so it never blocks on slow SSH connections.
+
+Sessions are sorted alongside local sessions by recency — the last time you visited a remote session is tracked locally, and each visit updates the sort timestamp so recently used sessions rise to the top.
 
 If a host is unreachable, it is silently skipped (3-second connect timeout, `BatchMode yes`).
+
+**When connected via tmux-smart-pane**, the plugin forwards your local tmux socket to the remote over SSH. This means:
+- Your local machine's sessions appear in the picker on the remote (highlighted in green with `<- hostname`), so you can jump back without disconnecting.
+- Selecting a different remote session from inside a managed connection signals the local machine to initiate the new SSH hop — you never manually chain SSH commands.

@@ -88,9 +88,10 @@ _jump_list_remote_sessions() {
 
     # Return cached SSH results for the remaining hosts; socket results above are always fresh.
     if (( ${1:-0} )); then
-        [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] && cat $REMOTE_SESSIONS_CACHE_PATH
+        [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] && sed -E "/$local_host/d" $REMOTE_SESSIONS_CACHE_PATH
         return
     fi
+
     # Write to a per-run temp file in the same directory as the cache, then
     # atomically replace the cache with mv. Orphaned SSH jobs from a prior
     # interrupted run write to their own abandoned temp file and can't

@@ -95,6 +95,8 @@ _jump_list_remote_sessions() {
         else
             cat $REMOTE_SESSIONS_CACHE_PATH
         fi
+
+        return
     fi
 
     # Write to a per-run temp file in the same directory as the cache, then

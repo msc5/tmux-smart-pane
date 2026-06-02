@@ -88,8 +88,13 @@ _jump_list_remote_sessions() {
 
     # Return cached SSH results for the remaining hosts; socket results above are always fresh.
     if (( ${1:-0} )); then
-        [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] && sed -E "/$local_host/d" $REMOTE_SESSIONS_CACHE_PATH
-        return
+        [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] || return
+
+        if [[ -n "$local_host" ]]; then 
+            sed -E "/$local_host/d" $REMOTE_SESSIONS_CACHE_PATH
+        else
+            cat $REMOTE_SESSIONS_CACHE_PATH
+        fi
     fi
 
     # Write to a per-run temp file in the same directory as the cache, then

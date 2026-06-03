@@ -38,7 +38,7 @@ selected=$(
         --prompt "@$(hostname) > " \
         --header "$HEADER" \
         --bind "load:reload-sync($JUMP_LIST all)" \
-        --bind "ctrl-x:execute-silent($KILL_SESSION {1})+reload($JUMP_LIST all)" \
+        --bind "ctrl-x:execute-silent($KILL_SESSION {1})+reload($JUMP_LIST all 1)" \
         < <("$JUMP_LIST" all 1)
 )
 

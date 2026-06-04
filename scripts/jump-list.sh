@@ -126,7 +126,7 @@ _jump_list_remote_sessions() {
 
     mv "$_ssh_tmp" "$REMOTE_SESSIONS_CACHE_PATH"
     sort -r -n -t'|' -k1,1 < "$REMOTE_SESSIONS_CACHE_PATH"
-    sed -i -E 's/-> /->*/g' $REMOTE_SESSIONS_CACHE_PATH
+    sed -i -E 's/-> /.../g' $REMOTE_SESSIONS_CACHE_PATH
 }
 
 _jump_list_tmuxinator_sessions() {

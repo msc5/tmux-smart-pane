@@ -157,8 +157,8 @@ _jump_list_panes() {
     trap 'rm -f "$fg_cmd_file"' EXIT
     _tmux_fg_cmd_lines > "$fg_cmd_file"
 
-    tmux list-panes -a -F "#{session_name}|#{window_index}|#{pane_index}|#{pane_current_command}|#{pane_tty}|#{pane_id}|#{@last_seen}" |
-    while IFS=$'|' read -r s_name w_index p_index p_cmd p_tty p_id last_seen; do
+    tmux list-panes -a -F "#{session_name}|#{window_index}|#{window_name}|#{pane_index}|#{pane_current_command}|#{pane_tty}|#{pane_id}|#{@last_seen}" |
+    while IFS=$'|' read -r s_name w_index w_name p_index p_cmd p_tty p_id last_seen; do
 
         # Skip active pane
         (( $1 )) && [[ "$p_id" == "$this_pane_id" ]] && continue
@@ -177,8 +177,8 @@ _jump_list_panes() {
 
         sort_key="${last_seen:-0}"
 
-        printf "%010d|%s|%-15.15s  %3d:%-3d  %-20s  %.55s\n" \
-            "$sort_key" "$p_id" "$s_name" "$w_index" "$p_index" "$age" "$p_proc"
+        printf "%010d|%s|%-15.15s  %-15.15s  %3d:%-3d  %-20s  %.55s\n" \
+            "$sort_key" "$p_id" "$s_name" "$w_name" "$w_index" "$p_index" "$age" "$p_proc"
     done |
     sort -r -n -t'|' -k1,1 |
     cut -d'|' -f2-

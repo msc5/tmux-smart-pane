@@ -52,7 +52,7 @@ fi
 
 if [[ "$p_id" == remote:* ]]; then
     rest="${p_id#remote:}"
-    if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
+    if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]] && [[ -n "${TMSP_MANAGED:-}" ]]; then
         # On a managed remote — signal connect-remote.sh via the local socket
         # to initiate the SSH connection from the local machine.
         tmux -S "$TMSP_LOCAL_SOCKET" set-environment -g \
@@ -71,7 +71,7 @@ if [[ "$p_id" == remote:* ]]; then
     fi
 elif [[ "$p_id" == local:* ]]; then
     actual_pane_id="${p_id#local:}"
-    if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]]; then
+    if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]] && [[ -n "${TMSP_MANAGED:-}" ]]; then
         tmux -S "$TMSP_LOCAL_SOCKET" set-environment -g \
             TMSP_PENDING_LOCAL "$actual_pane_id" 2>/dev/null || true
         tmux detach-client -t "$(tmux display-message -p '#{client_name}' 2>/dev/null)"

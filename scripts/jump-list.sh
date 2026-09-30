@@ -112,6 +112,18 @@ _jump_list_remote_sessions() {
     _ssh_tmp=$(mktemp "${REMOTE_SESSIONS_CACHE_PATH}.XXXXXX")
     trap 'rm -f "$_ssh_tmp"' RETURN
 
+    # The RETURN trap only fires if the function finishes. When the picker
+    # closes mid-refresh this process is killed during `wait`, leaving its temp
+    # file behind, so remove every temp file but our own. (A refresh running
+    # concurrently in another client would lose its update; the next refresh
+    # repairs it.)
+    local _cache_dir _stale
+    _cache_dir=$(dirname "$REMOTE_SESSIONS_CACHE_PATH")
+    _stale=$(find "$_cache_dir" -maxdepth 1 -type f \
+        -name "$(basename "$REMOTE_SESSIONS_CACHE_PATH").??????" ! -name "$(basename "$_ssh_tmp")" \
+        -print -delete 2>>"$TMSP_ERR" | wc -l | tr -d ' ')
+    (( _stale > 0 )) && _log debug "removed $_stale leftover temp files from $_cache_dir"
+
     _log info "refreshing remote sessions"
     for host in $(_get_ssh_hosts); do
         if [[ "$(hostname)" == "$host" ]]; then

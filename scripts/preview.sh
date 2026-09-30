@@ -6,10 +6,11 @@ if [[ "$id" == remote:* ]]; then
     rest="${id#remote:}"
     host="${rest%%:*}"
     sess="${rest#*:}"
-    ssh -o ConnectTimeout=2 \
+    ssh "${TMSP_SSH_LOG_OPTS[@]}" \
+        -o ConnectTimeout=2 \
         -o BatchMode=yes \
-        "$host" "tmux capture-pane -ep -t '$sess' 2>/dev/null" 2>/dev/null \
-        || printf "(session unavailable)\n"
+        "$host" "tmux capture-pane -ep -t '$sess' 2>/dev/null" 2>>"$TMSP_ERR" \
+        || { rc=$?; _log debug "preview ssh $host:$sess failed (exit $rc)"; printf "(session unavailable)\n"; }
 elif [[ "$id" == tmuxinator:* ]]; then
     name="${id#tmuxinator:}"
     config_path="${XDG_CONFIG_HOME:-$HOME/.config}/tmuxinator/${name}.yml"

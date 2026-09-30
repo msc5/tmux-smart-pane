@@ -33,6 +33,10 @@ Key functions:
 - `_tmux_fg_cmd_lines` — single `ps` pass to map `tty → foreground command` for all panes
 - `_sed_inplace` — portable in-place sed wrapper (GNU sed uses `-i`, BSD sed requires `-i ''`)
 
+**Logging** — also set up in `helpers.sh`. The level comes from `@smart-pane-log-level` (`off|error|info|debug|trace`). It is read once per process tree and exported as `TMSP_LOG_LEVEL`, so child scripts and fzf previews skip the tmux lookup. Use `_log <level> <msg>` to write to `SMART_PANE_LOG` (`debug.log` under the base path). For diagnostics that matter, redirect stderr to `2>>"$TMSP_ERR"` instead of `2>/dev/null`; `TMSP_ERR` is `/dev/null` unless the level is debug or higher. Pass `"${TMSP_SSH_LOG_OPTS[@]}"` to `ssh` (adds `-E`, and `-v` at trace). At debug the scripts set an ERR trap with errtrace. Because of that, don't write bare `(( expr ))` statements that can evaluate to 0; use `x=$(( ... ))` or a condition instead. At trace, `set -x` writes to the log through `BASH_XTRACEFD`.
+
+**`scripts/debug-report.sh`** — collects versions, options, keybindings, SSH config and a probe of each host, cache state, and the tail of the log. It runs from `prefix + :smart-pane-report` (a `command-alias` registered in `tmux-smart-pane.tmux`) or directly from a shell.
+
 **`scripts/connect-remote.sh`** — runs outside tmux (in the bare terminal after `detach-client -E`).  
 Args: `host sess saved-session`. Establishes an SSH session to the remote, sets `TMSP_MANAGED=1` in the remote tmux environment (so that `prefix + s` on the remote detaches rather than opening fzf), waits for the SSH session to exit, updates the remote-session recency cache, then re-attaches by exec-ing `jump-session.sh --standalone`.
 

@@ -21,6 +21,7 @@ selected=$(
 action="${selected%%|*}"
 selected="${selected#*|}"
 p_id="${selected%%|*}"
+_log info "${action:-cancel} ${p_id:-<none>}"
 
 # None selected from fzf
 if [[ -z "$p_id" ]]; then

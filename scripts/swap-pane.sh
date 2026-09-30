@@ -14,4 +14,5 @@ declare -A CACHE
 CACHE[swap-pane]="${src_pane}:${target_pane}"
 declare -p CACHE > "$SMART_PANE_CACHE"
 
+_log info "swap $src_pane <-> $target_pane"
 tmux swap-pane -s "$src_pane" -t "$target_pane"

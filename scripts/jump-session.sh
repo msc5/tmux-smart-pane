@@ -22,6 +22,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 
+_log debug "picker opened (standalone=$STANDALONE fallback=${FALLBACK_SESSION:-<none>} managed=${TMSP_MANAGED:-0} local_socket=${TMSP_LOCAL_SOCKET:-<none>})"
+
 KILL_SESSION="$PLUGIN_DIR/scripts/kill-session.sh"
 HEADER="Jump to Session (ctrl-x: kill session)"
 
@@ -43,6 +45,7 @@ selected=$(
 )
 
 p_id="${selected%%|*}"
+_log info "selected: ${p_id:-<cancelled>}"
 
 # None selected from fzf
 if [[ -z "$p_id" ]]; then
@@ -55,8 +58,10 @@ if [[ "$p_id" == remote:* ]]; then
     if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]] && [[ -n "${TMSP_MANAGED:-}" ]]; then
         # On a managed remote — signal connect-remote.sh via the local socket
         # to initiate the SSH connection from the local machine.
+        _log debug "managed remote: setting TMSP_PENDING_REMOTE=$rest via $TMSP_LOCAL_SOCKET and detaching"
         tmux -S "$TMSP_LOCAL_SOCKET" set-environment -g \
-            TMSP_PENDING_REMOTE "${rest%%:*}:${rest#*:}" 2>/dev/null || true
+            TMSP_PENDING_REMOTE "${rest%%:*}:${rest#*:}" 2>>"$TMSP_ERR" \
+            || _log error "failed to set TMSP_PENDING_REMOTE via $TMSP_LOCAL_SOCKET"
         tmux detach-client -t "$(tmux display-message -p '#{client_name}' 2>/dev/null)"
     elif (( STANDALONE )); then
         exec "$PLUGIN_DIR/scripts/connect-remote.sh" \
@@ -67,13 +72,16 @@ if [[ "$p_id" == remote:* ]]; then
             "$PLUGIN_DIR/scripts/connect-remote.sh" \
             "${rest%%:*}" "${rest#*:}" \
             "$saved_session")
+        _log debug "detach-client -E $cmd"
         tmux detach-client -E "$cmd"
     fi
 elif [[ "$p_id" == local:* ]]; then
     actual_pane_id="${p_id#local:}"
     if [[ -n "${TMSP_LOCAL_SOCKET:-}" ]] && [[ -n "${TMSP_MANAGED:-}" ]]; then
+        _log debug "managed remote: setting TMSP_PENDING_LOCAL=$actual_pane_id via $TMSP_LOCAL_SOCKET and detaching"
         tmux -S "$TMSP_LOCAL_SOCKET" set-environment -g \
-            TMSP_PENDING_LOCAL "$actual_pane_id" 2>/dev/null || true
+            TMSP_PENDING_LOCAL "$actual_pane_id" 2>>"$TMSP_ERR" \
+            || _log error "failed to set TMSP_PENDING_LOCAL via $TMSP_LOCAL_SOCKET"
         tmux detach-client -t "$(tmux display-message -p '#{client_name}' 2>/dev/null)"
     fi
 elif [[ "$p_id" == tmuxinator:* ]]; then

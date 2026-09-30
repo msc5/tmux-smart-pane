@@ -72,6 +72,9 @@ _(auto)_ Space-separated list of SSH hosts to query for remote sessions; if unse
 ### `@smart-pane-tmuxinator` 
 (default: `off`) Set to `on` to enable tmuxinator integration (see [tmuxinator integration](#tmuxinator-integration))
 
+### `@smart-pane-log-level`
+(default: `off`) One of `off`, `error`, `info`, `debug`, `trace`. Logs to `~/.local/share/tmux-smart-pane/debug.log` (see [troubleshooting](#troubleshooting))
+
 Example:
 
 ```
@@ -154,3 +157,45 @@ If a host is unreachable, it is silently skipped (3-second connect timeout, `Bat
 **When connected via tmux-smart-pane**, the plugin forwards your local tmux socket to the remote over SSH. This means:
 - Your local machine's sessions appear in the picker on the remote (highlighted in green with `<- hostname`), so you can jump back without disconnecting.
 - Selecting a different remote session from inside a managed connection signals the local machine to initiate the new SSH hop — you never manually chain SSH commands.
+
+## Troubleshooting
+
+The pickers run in popups and detached terminals that close as soon as they finish, so errors are hard to see. Turn on logging to record what happened:
+
+```
+tmux set -g @smart-pane-log-level debug
+```
+
+This takes effect the next time you open a picker, with no reload needed. Put it in `tmux.conf` to make it permanent. Then reproduce the problem and read `~/.local/share/tmux-smart-pane/debug.log`.
+
+| Level | Logs |
+|---|---|
+| `error` | Failed SSH connections and failed hand-offs between machines |
+| `info` | Selections, connections, swaps, and unreachable hosts |
+| `debug` | Plus SSH errors (via `ssh -E`), stderr from tmux/ssh, and any command that fails unexpectedly |
+| `trace` | Plus a bash `xtrace` of every command (`file:line function`) and verbose SSH (`ssh -v`). Very noisy |
+
+For remote sessions, set the level on the remote host too. Each machine writes its own log.
+
+The log is trimmed to its most recent 5000 lines when it grows past 1 MB (checked when the plugin loads).
+
+### Reporting an issue
+
+Generate a debug report from inside tmux:
+
+```
+prefix + :smart-pane-report
+```
+
+Or run it from a shell:
+
+```bash
+~/.tmux/plugins/tmux-smart-pane/scripts/debug-report.sh   # adjust to your plugin install path
+```
+
+The report collects versions (tmux, fzf, bash, ssh, OS), plugin options and keybindings, SSH settings for each host along with a quick connection check, cache state, and the last 200 lines of the log. It is saved to `~/.local/share/tmux-smart-pane/debug-report.txt` and copied to the tmux buffer `smart-pane-report`. If `set-clipboard` is on, it is also copied to your system clipboard.
+
+Flags: `--no-remote` skips the SSH connection checks, and `--lines N` changes how many log lines are included.
+
+The report contains hostnames, usernames, and session names, so review it before posting.
+

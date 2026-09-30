@@ -4,6 +4,7 @@
 # Called from jump-session.sh's ctrl-x fzf binding.
 
 set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
 
 p="$1"
 [[ "$p" == %* ]] || exit 0
@@ -41,4 +42,5 @@ for _ in {1..20}; do
     sleep 0.1
 done
 
+_log info "killing session $sess (closed ${#nvim_panes[@]} vim panes first)"
 tmux kill-session -t "$sess"

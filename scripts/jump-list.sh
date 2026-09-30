@@ -80,7 +80,8 @@ _jump_list_remote_sessions() {
         tmux -S "$TMSP_LOCAL_SOCKET" list-panes -a \
             -f "#{&&:#{window_active},#{pane_active}}" \
             -F "$TMSP_SESSION_FMT" \
-            2>/dev/null > "$_socket_tmp"
+            2>>"$TMSP_ERR" > "$_socket_tmp"
+        _log debug "forwarded socket $TMSP_LOCAL_SOCKET ($local_host): exit $?, $(wc -l < "$_socket_tmp" | tr -d ' ') sessions"
         _format_session_rows "$now" "<- $local_host" "local:" "pane_id" "\e[0;32m" < "$_socket_tmp" |
         sort -r -n -t'|' -k1,1
         rm -f "$_socket_tmp"
@@ -88,7 +89,11 @@ _jump_list_remote_sessions() {
 
     # Return cached SSH results for the remaining hosts; socket results above are always fresh.
     if (( ${1:-0} )); then
-        [[ -s $REMOTE_SESSIONS_CACHE_PATH ]] || return
+        if [[ ! -s $REMOTE_SESSIONS_CACHE_PATH ]]; then
+            _log debug "remote cache empty or missing: $REMOTE_SESSIONS_CACHE_PATH"
+            return
+        fi
+        _log debug "serving remote sessions from cache ($(wc -l < "$REMOTE_SESSIONS_CACHE_PATH" | tr -d ' ') rows)"
 
         if [[ -n "$local_host" ]]; then 
             sed -E "/$local_host/d" $REMOTE_SESSIONS_CACHE_PATH
@@ -107,26 +112,43 @@ _jump_list_remote_sessions() {
     _ssh_tmp=$(mktemp "${REMOTE_SESSIONS_CACHE_PATH}.XXXXXX")
     trap 'rm -f "$_ssh_tmp"' RETURN
 
+    _log info "refreshing remote sessions"
     for host in $(_get_ssh_hosts); do
-        [[ "$(hostname)" == "$host" ]] && continue
+        if [[ "$(hostname)" == "$host" ]]; then
+            _log debug "skipping $host: matches hostname"
+            continue
+        fi
         # Skip the local machine — already enumerated via the forwarded socket above.
-        [[ -n "$local_host" && "$local_host" == "$host" ]] && continue
+        if [[ -n "$local_host" && "$local_host" == "$host" ]]; then
+            _log debug "skipping $host: reached via forwarded socket"
+            continue
+        fi
         (
-            ssh -o ConnectTimeout=3 \
+            local start=$SECONDS
+            ssh "${TMSP_SSH_LOG_OPTS[@]}" \
+                -o ConnectTimeout=3 \
                 -o BatchMode=yes \
                 "$host" \
                 "tmux list-panes -a -f '#{&&:#{window_active},#{pane_active}}' \
                  -F '$TMSP_SESSION_FMT'" \
-                2>/dev/null |
+                2>>"$TMSP_ERR" |
             _format_session_rows "$now" "-> $host" "remote:$host:" "session_name" "\e[0;33m" \
             >> "$_ssh_tmp"
+            # 255 = ssh itself failed (unreachable, auth); 1 usually = no tmux server on the remote.
+            local rc=${PIPESTATUS[0]}
+            if (( rc == 0 )); then
+                _log debug "ssh $host: ok ($((SECONDS - start))s)"
+            else
+                _log info "ssh $host: exit $rc ($((SECONDS - start))s)"
+            fi
         ) &
     done
     wait
 
     mv "$_ssh_tmp" "$REMOTE_SESSIONS_CACHE_PATH"
+    _log debug "remote cache refreshed: $(wc -l < "$REMOTE_SESSIONS_CACHE_PATH" | tr -d ' ') rows"
     sort -r -n -t'|' -k1,1 < "$REMOTE_SESSIONS_CACHE_PATH"
-    sed -i -E 's/-> /.../g' $REMOTE_SESSIONS_CACHE_PATH
+    _sed_inplace -E 's/-> /.../g' "$REMOTE_SESSIONS_CACHE_PATH"
 }
 
 _jump_list_tmuxinator_sessions() {

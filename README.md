@@ -15,6 +15,7 @@ Managing remote tmux sessions normally means nesting tmux inside tmux — with a
 
 - **Session jump** (`prefix + s`) — fzf picker showing local and remote sessions sorted by recency; remote sessions appear alongside local ones and connect via SSH automatically
 - **Pane jump / swap** (`prefix + p`) — fzf picker showing all panes sorted by `@last_seen`; press `Enter` to jump, `Tab` to swap the current pane with the selection
+- **Last session** (`prefix + L`) — toggles back to the previous session, like `switch-client -l`, but also across remote sessions: from a remote it returns to where you came from, and from a local session it reconnects to the remote you just left
 - **Undo swap** (`prefix + P`) — reverses the last pane swap (acts as a toggle)
 - **Tmuxinator integration** _(opt-in - see [configuration](#configuration))_ — configured [tmuxinator](https://github.com/tmuxinator/tmuxinator) configs (`tmuxinator list`) appear at the bottom of the session picker; selecting one starts the session and jumps to it
 
@@ -59,6 +60,9 @@ Set options in `tmux.conf` **before** the `run` line:
 
 ### `@smart-pane-jump-pane-key` 
 (default: `p`) Open pane jump / swap picker
+
+### `@smart-pane-jump-last-key` 
+(default: `L`) Jump to the previous session, local or remote (replaces tmux's own `prefix + L`)
 
 ### `@smart-pane-undo-swap-key` 
 (default: `P`) Undo last pane swap

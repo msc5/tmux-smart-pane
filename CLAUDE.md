@@ -44,6 +44,8 @@ Args: `host sess saved-session`. Establishes an SSH session to the remote, sets 
 
 **ControlMaster** — the plugin relies on the user's `~/.ssh/config` for ControlMaster/ControlPath/ControlPersist. No socket paths are hardcoded. When configured, remote session queries in `jump-list.sh` and preview fetches in `preview.sh` reuse the existing SSH channel and are near-instant.
 
+**Last location** — the local server's global `@smart-pane-last-location` option holds the previous location as `local:<session>` or `remote:<host>:<session>`. A `client-session-changed[47]` hook updates it on every local switch; `jump-session.sh` and `jump-last.sh` set it to the local session before leaving for a remote, and `connect-remote.sh` sets it to the remote session once SSH exits. On a managed remote, `jump-last.sh` sets `TMSP_PENDING_LAST` through the forwarded socket and detaches, and `connect-remote.sh` routes to the stored location.
+
 **Recency tracking for remote sessions** — `connect-remote.sh` updates the sort timestamp in the flat cache file (`REMOTE_SESSIONS_CACHE_PATH`) after each connection, so recently visited remote sessions sort to the top of the picker on next open.
 
 **Cache** — a bash `declare -A CACHE` file at `~/.local/share/tmux-smart-pane/cache.sh` (overridable via `@smart-pane-cache-path`). Currently only stores `CACHE[swap-pane]="src:target"` for undo.
@@ -61,6 +63,7 @@ Remote session IDs use the prefix `remote:<host>:<session>` throughout the pipel
 | `jump-list.sh panes` | All panes except current, sorted by `@last_seen` recency |
 | `jump-session.sh` | Full-screen fzf popup for sessions; handles both normal (popup) and `--standalone` (bare terminal) modes; routes remote selections to `connect-remote.sh` |
 | `jump-pane.sh` | Full-screen fzf popup for panes; `Enter` jumps, `Tab` swaps via `swap-pane.sh` |
+| `jump-last.sh` | `prefix + L`: toggles to the previous location; on a managed remote, signals `connect-remote.sh` instead |
 | `swap-pane.sh` | Swaps two panes and records the pair in the undo cache |
 | `undo-swap-pane.sh` | Reads cache, reverses the stored swap pair via `swap-pane.sh` |
 | `connect-remote.sh` | Runs outside tmux; manages SSH lifecycle and local re-attach |

@@ -68,6 +68,7 @@ if [[ "$p_id" == remote:* ]]; then
             "${rest%%:*}" "${rest#*:}" "$FALLBACK_SESSION"
     else
         saved_session="$(tmux display-message -p '#S')"
+        tmux set-option -g @smart-pane-last-location "local:$saved_session"
         cmd=$(printf '%q ' \
             "$PLUGIN_DIR/scripts/connect-remote.sh" \
             "${rest%%:*}" "${rest#*:}" \

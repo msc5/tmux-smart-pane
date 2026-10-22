@@ -50,7 +50,25 @@ _read_and_clear() {
 
 pending_remote=$(_read_and_clear TMSP_PENDING_REMOTE)
 pending_local=$(_read_and_clear TMSP_PENDING_LOCAL)
-_log debug "pending navigation: remote=${pending_remote:-<none>} local=${pending_local:-<none>}"
+pending_last=$(_read_and_clear TMSP_PENDING_LAST)
+_log debug "pending navigation: remote=${pending_remote:-<none>} local=${pending_local:-<none>} last=${pending_last:-<none>}"
+
+# Wherever we go next, this remote session becomes the "last" location —
+# read the previous one first in case jump-last.sh asked to return to it.
+here="remote:$host:$sess"
+last=$(tmux show-option -gqv @smart-pane-last-location 2>>"$TMSP_ERR")
+tmux set-option -g @smart-pane-last-location "$here" 2>>"$TMSP_ERR"
+
+if [[ -n "$pending_last" ]]; then
+    if [[ "$last" == remote:* && "$last" != "$here" ]]; then
+        pending_remote="${last#remote:}"
+    else
+        last_sess="${last#local:}"
+        tmux has-session -t "=$last_sess" 2>/dev/null || last_sess="$saved_session"
+        _log info "returning to last local session $last_sess"
+        exec tmux attach-session -t "=$last_sess"
+    fi
+fi
 
 if [[ -n "$pending_remote" ]]; then
     r_host="${pending_remote%%:*}"

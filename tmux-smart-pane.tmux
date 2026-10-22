@@ -13,10 +13,15 @@ _get_opt() {
 tmux set-option -g focus-events on
 tmux set-hook -g pane-focus-in \
     'run-shell "tmux set-option -p -t #{pane_id} @last_seen $(date +%s)"'
+# Remember the session each client leaves so jump-last.sh can return to it.
+# Indexed so re-sourcing replaces our entry without clobbering the user's hooks.
+tmux set-hook -g 'client-session-changed[47]' \
+    "if-shell -F '#{client_last_session}' 'set-option -gF @smart-pane-last-location \"local:#{client_last_session}\"'"
 
 UNDO_KEY=$(_get_opt "@smart-pane-undo-swap-key" "P")
 JUMP_SESSION_KEY=$(_get_opt "@smart-pane-jump-session-key" "s")
 JUMP_PANE_KEY=$(_get_opt "@smart-pane-jump-pane-key" "p")
+JUMP_LAST_KEY=$(_get_opt "@smart-pane-jump-last-key" "L")
 
 # Keep the debug log bounded: trim to the most recent lines once it passes ~1 MB.
 if [[ -f "$SMART_PANE_LOG" ]] && (( $(wc -c < "$SMART_PANE_LOG") > 1048576 )); then
@@ -41,3 +46,5 @@ tmux bind "$JUMP_SESSION_KEY" display-popup -w "100%" -h "100%" -b none \
     -E "$CURRENT_DIR/scripts/jump-session.sh"
 tmux bind "$JUMP_PANE_KEY" display-popup -w "100%" -h "100%" -b none \
     -E "$CURRENT_DIR/scripts/jump-pane.sh"
+tmux bind "$JUMP_LAST_KEY" run-shell \
+    "$CURRENT_DIR/scripts/jump-last.sh #{q:client_name} #{q:session_name}"
